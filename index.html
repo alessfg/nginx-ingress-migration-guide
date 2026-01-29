@@ -100,13 +100,25 @@
         .copy-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; float: right; }
         .copy-btn:hover { background: rgba(255,255,255,0.3); }
         .copy-btn.copied { background: #4caf50; }
+        .approach-tabs { display: flex; gap: 0; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); }
+        .approach-tab { padding: 8px 20px; border: none; background: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; color: #666; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .approach-tab:hover { color: var(--primary-color); }
+        .approach-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .approach-content { display: none; }
+        .approach-content.active { display: block; }
     </style>
 </head>
 <body>
     <header>
-        <div class="container">
-            <h1>NGINX Ingress Migration Guide</h1>
-            <p>Migrate from Kubernetes Community NGINX Ingress to Official NGINX Ingress Controller</p>
+        <div class="container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
+            <div>
+                <h1>NGINX Ingress Migration Guide</h1>
+                <p>Migrate from Kubernetes Community NGINX Ingress to Official NGINX Ingress Controller</p>
+            </div>
+            <a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);color:white;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:0.9rem;border:1px solid rgba(255,255,255,0.3);transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="white"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                Contribute on GitHub
+            </a>
         </div>
     </header>
 
@@ -148,9 +160,10 @@
             <div class="info-box tip" style="margin: 20px 0;">
                 <strong>How to Read the Mappings</strong>
                 <ul style="margin: 10px 0 0 20px;">
-                    <li><strong>Simple rows:</strong> Direct 1-to-1 annotation mappings. Just change the annotation prefix from <code>nginx.ingress.kubernetes.io/</code> to <code>nginx.org/</code> (or the value shown).</li>
-                    <li><strong>Expandable rows <span style="color: var(--primary-color);">▶</span>:</strong> These annotations map to a CRD (VirtualServer, Policy, or TransportServer). Click to expand and see the full CRD example with installation instructions.</li>
-                    <li><strong>Grouped annotations:</strong> Related annotations that work together are grouped in a single expandable row, showing how they map to a unified CRD configuration.</li>
+                    <li><strong>Annotation-to-annotation rows <span style="color: var(--primary-color);">▶</span>:</strong> Direct mappings where you change the annotation name/prefix. Click to expand and see before/after Ingress YAML examples.</li>
+                    <li><strong>CRD-based rows <span style="color: var(--primary-color);">▶</span>:</strong> Annotations that map to a CRD (VirtualServer, Policy, or TransportServer). Click to expand for full CRD examples with installation instructions.</li>
+                    <li><strong>Grouped annotations:</strong> Related annotations that work together are grouped in a single expandable row, showing how they map to a unified configuration.</li>
+                    <li><strong>Official-only rows:</strong> Annotations marked <em>N/A</em> on the left are features unique to the Official controller with no community equivalent.</li>
                 </ul>
             </div>
 
@@ -197,6 +210,19 @@ spec:
       - 192.168.1.100</code></pre></div>
                             </div>
                         </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>satisfy</code></td>
+                            <td><code>nginx.org/location-snippets</code>: <code>satisfy any;</code> or <code>satisfy all;</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/satisfy: "any"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/location-snippets: |
+    satisfy any;</code></pre></div>
+                            </div>
+                        </div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -211,15 +237,32 @@ spec:
                             <td><code>nginx.org/basic-auth-*</code> or <span class="badge badge-policy">Policy</span> <code>basicAuth</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
-                            <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                            <div class="approach-tabs">
+                                <button class="approach-tab active" onclick="switchApproach(this, 'annotation')">Annotation Approach</button>
+                                <button class="approach-tab" onclick="switchApproach(this, 'crd')">CRD Approach</button>
                             </div>
-                            <div class="comparison">
-                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+                            <div class="approach-content active" data-approach="annotation">
+                                <div class="comparison">
+                                    <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
   nginx.ingress.kubernetes.io/auth-type: "basic"
   nginx.ingress.kubernetes.io/auth-secret: "basic-auth"
   nginx.ingress.kubernetes.io/auth-realm: "Protected Area"</code></pre></div>
-                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: v1
+                                    <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/basic-auth-secret: "basic-auth"
+  nginx.org/basic-auth-realm: "Protected Area"</code></pre></div>
+                                </div>
+                                <div class="info-box note"><strong>Note:</strong> The secret must be of type <code>nginx.org/htpasswd</code>.</div>
+                            </div>
+                            <div class="approach-content" data-approach="crd">
+                                <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
+                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                </div>
+                                <div class="comparison">
+                                    <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/auth-type: "basic"
+  nginx.ingress.kubernetes.io/auth-secret: "basic-auth"
+  nginx.ingress.kubernetes.io/auth-realm: "Protected Area"</code></pre></div>
+                                    <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: v1
 kind: Secret
 metadata:
   name: basic-auth
@@ -235,6 +278,7 @@ spec:
   basicAuth:
     secret: basic-auth
     realm: "Protected Area"</code></pre></div>
+                                </div>
                             </div>
                         </div></td></tr>
                     </tbody>
@@ -246,11 +290,108 @@ spec:
             <div class="table-wrapper">
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
-                        <tr><td><code>client-body-buffer-size</code></td><td><code>nginx.org/client-body-buffer-size</code></td></tr>
-                        <tr><td><code>proxy-buffer-size</code></td><td><code>nginx.org/proxy-buffer-size</code></td></tr>
-                        <tr><td><code>proxy-buffering</code></td><td><code>nginx.org/proxy-buffering</code></td></tr>
-                        <tr><td><code>proxy-buffers-number</code></td><td><code>nginx.org/proxy-buffers</code></td></tr>
-                        <tr><td><code>proxy-body-size</code></td><td><code>nginx.org/client-max-body-size</code></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>client-body-buffer-size</code></td>
+                            <td><code>nginx.org/client-body-buffer-size</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/client-body-buffer-size: "16k"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/client-body-buffer-size: "16k"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-body-size</code></td>
+                            <td><code>nginx.org/client-max-body-size</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-body-size: "10m"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/client-max-body-size: "10m"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-buffer-size</code></td>
+                            <td><code>nginx.org/proxy-buffer-size</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-buffer-size: "8k"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-buffer-size: "8k"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-buffering</code></td>
+                            <td><code>nginx.org/proxy-buffering</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-buffering: "on"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-buffering: "on"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-buffers-number</code></td>
+                            <td><code>nginx.org/proxy-buffers</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-buffers-number: "4"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-buffers: "4 8k"</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> The Official annotation uses a combined format: <code>"number size"</code> (e.g., <code>"4 8k"</code>).</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-busy-buffers-size</code></td>
+                            <td><code>nginx.org/proxy-busy-buffers-size</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "16k"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-busy-buffers-size: "16k"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-max-temp-file-size</code></td>
+                            <td><code>nginx.org/proxy-max-temp-file-size</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-max-temp-file-size: "1024m"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-max-temp-file-size: "1024m"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-request-buffering</code></td>
+                            <td>ConfigMap: <code>proxy-request-buffering</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-request-buffering: "off"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Set via ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  proxy-request-buffering: "off"</code></pre></div>
+                            </div>
+                        </div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -309,6 +450,119 @@ spec:
                 </table>
             </div>
 
+            <!-- Configuration Snippets -->
+            <h3>Configuration Snippets</h3>
+            <div class="table-wrapper">
+                <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
+                    <tbody>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>configuration-snippet</code></td>
+                            <td><code>nginx.org/location-snippets</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/configuration-snippet: |
+    more_set_headers "X-Custom: value";</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/location-snippets: |
+    add_header X-Custom "value";</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>server-snippet</code></td>
+                            <td><code>nginx.org/server-snippets</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/server-snippet: |
+    location /health { return 200; }</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/server-snippets: |
+    location /health { return 200; }</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>stream-snippet</code></td>
+                            <td><span class="badge badge-transportserver">TransportServer</span> or GlobalConfiguration</td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/stream-snippet: |
+    server { listen 3306; proxy_pass mysql; }</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Use TransportServer CRD instead
+apiVersion: k8s.nginx.org/v1
+kind: TransportServer
+spec:
+  listener:
+    name: mysql-tcp
+    protocol: TCP
+  upstreams:
+    - name: mysql
+      service: mysql
+      port: 3306
+  action:
+    pass: mysql</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- CORS -->
+            <h3>CORS</h3>
+            <div class="table-wrapper">
+                <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
+                    <tbody>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><div class="annotation-list"><code>cors-allow-credentials</code><code>cors-allow-headers</code><code>cors-allow-methods</code><code>cors-allow-origin</code><code>cors-expose-headers</code><code>cors-max-age</code><code>enable-cors</code></div></td>
+                            <td><code>nginx.org/server-snippets</code> or <code>nginx.org/location-snippets</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/enable-cors: "true"
+  nginx.ingress.kubernetes.io/cors-allow-origin: "https://frontend.example.com"
+  nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+  nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type"
+  nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+  nginx.ingress.kubernetes.io/cors-max-age: "86400"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: k8s.nginx.org/v1
+kind: VirtualServer
+metadata:
+  name: cors-app
+spec:
+  host: api.example.com
+  server-snippets: |
+    set $cors_origin "";
+    if ($http_origin ~* "^https://frontend\.example\.com$") {
+        set $cors_origin $http_origin;
+    }
+    add_header Access-Control-Allow-Origin $cors_origin always;
+    add_header Access-Control-Allow-Credentials "true" always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Authorization, Content-Type" always;
+    add_header Access-Control-Max-Age 86400 always;
+    if ($request_method = OPTIONS) {
+        return 204;
+    }
+  upstreams:
+    - name: api-backend
+      service: api-service
+      port: 80
+  routes:
+    - path: /
+      action:
+        pass: api-backend</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> The Official controller does not have dedicated CORS annotations. Use <code>server-snippets</code> or <code>location-snippets</code> to add CORS headers directly in the NGINX configuration.</div>
+                        </div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
             <!-- Error Handling -->
             <h3>Error Handling</h3>
             <div class="table-wrapper">
@@ -348,13 +602,151 @@ spec:
                 </table>
             </div>
 
+            <!-- Headers -->
+            <h3>Headers</h3>
+            <div class="table-wrapper">
+                <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
+                    <tbody>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>connection-proxy-header</code></td>
+                            <td>Snippets or ConfigMap</td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/connection-proxy-header: "keep-alive"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/location-snippets: |
+    proxy_set_header Connection "keep-alive";</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>custom-headers</code></td>
+                            <td><span class="badge badge-virtualserver">VirtualServer</span> <code>responseHeaders.add</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                            </div>
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/custom-headers: "default/custom-headers-configmap"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: k8s.nginx.org/v1
+kind: VirtualServer
+spec:
+  routes:
+    - path: /
+      action:
+        proxy:
+          upstream: my-backend
+          responseHeaders:
+            add:
+              - name: X-Frame-Options
+                value: "DENY"
+              - name: X-Content-Type-Options
+                value: "nosniff"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-hide-headers</code></td>
+                            <td><code>nginx.org/proxy-hide-headers</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-hide-headers: "X-Powered-By,Server"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-hide-headers: "X-Powered-By,Server"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-pass-headers</code></td>
+                            <td><code>nginx.org/proxy-pass-headers</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-pass-headers: "X-Custom-Header"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-pass-headers: "X-Custom-Header"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><div class="annotation-list"><code>upstream-vhost</code><code>x-forwarded-prefix</code></div></td>
+                            <td><span class="badge badge-virtualserver">VirtualServer</span> <code>requestHeaders.set</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                            </div>
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/upstream-vhost: "backend.internal"
+  nginx.ingress.kubernetes.io/x-forwarded-prefix: "/api"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: k8s.nginx.org/v1
+kind: VirtualServer
+spec:
+  routes:
+    - path: /api
+      action:
+        proxy:
+          upstream: my-backend
+          requestHeaders:
+            set:
+              - name: Host
+                value: "backend.internal"
+              - name: X-Forwarded-Prefix
+                value: "/api"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- HSTS -->
+            <h3>HSTS</h3>
+            <div class="table-wrapper">
+                <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
+                    <tbody>
+                        <tr><td><em>N/A (ConfigMap only)</em></td><td><code>nginx.org/hsts</code></td></tr>
+                        <tr><td><em>N/A</em></td><td><code>nginx.org/hsts-max-age</code></td></tr>
+                        <tr><td><em>N/A</em></td><td><code>nginx.org/hsts-include-subdomains</code></td></tr>
+                        <tr><td><em>N/A</em></td><td><code>nginx.org/hsts-behind-proxy</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="info-box note"><strong>Note:</strong> HSTS annotations are Official NGINX-only. The community controller handles HSTS via ConfigMap only.</div>
+
             <!-- Load Balancing -->
             <h3>Load Balancing</h3>
             <div class="table-wrapper">
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
-                        <tr><td><code>load-balance</code></td><td><code>nginx.org/lb-method</code></td></tr>
-                        <tr><td><code>service-upstream</code></td><td><code>nginx.org/use-cluster-ip</code></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>load-balance</code></td>
+                            <td><code>nginx.org/lb-method</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/load-balance: "ewma"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/lb-method: "least_conn"</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> Supported methods differ. Official supports: <code>round_robin</code>, <code>least_conn</code>, <code>ip_hash</code>, <code>hash</code>, <code>random</code>.</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>service-upstream</code></td>
+                            <td><code>nginx.org/use-cluster-ip</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/service-upstream: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/use-cluster-ip: "true"</code></pre></div>
+                            </div>
+                        </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><div class="annotation-list"><code>upstream-hash-by</code><code>upstream-hash-by-subset</code><code>upstream-hash-by-subset-size</code></div></td>
                             <td><span class="badge badge-virtualserver">VirtualServer</span> <code>upstreams[].lb-method</code></td>
@@ -447,6 +839,142 @@ spec:
                 </table>
             </div>
 
+            <!-- Miscellaneous -->
+            <h3>Miscellaneous</h3>
+            <div class="table-wrapper">
+                <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
+                    <tbody>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>enable-access-log</code></td>
+                            <td>ConfigMap: <code>access-log-off</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/enable-access-log: "false"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Set via ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  access-log-off: "true"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>enable-opentelemetry</code></td>
+                            <td>ConfigMap: OpenTelemetry settings</td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/enable-opentelemetry: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Enable via ConfigMap and CLI args
+# See docs.nginx.com for OpenTelemetry setup</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>http2-push-preload</code></td>
+                            <td>ConfigMap: <code>http2-push-preload</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/http2-push-preload: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Set via ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  http2-push-preload: "true"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>mirror-target</code></td>
+                            <td><code>nginx.org/location-snippets</code> with <code>mirror</code> directive</td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/mirror-target: "https://mirror.example.com$request_uri"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/location-snippets: |
+    mirror /mirror;
+    mirror_request_body on;
+  nginx.org/server-snippets: |
+    location /mirror {
+      internal;
+      proxy_pass https://mirror.example.com$request_uri;
+    }</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-http-version</code></td>
+                            <td>ConfigMap: <code>proxy-protocol</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-http-version: "1.1"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Configured via ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  proxy-protocol: "true"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>server-alias</code></td>
+                            <td>Create additional VirtualServer resources</td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/server-alias: "alias.example.com"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Create a separate VirtualServer per host
+apiVersion: k8s.nginx.org/v1
+kind: VirtualServer
+metadata:
+  name: alias-app
+spec:
+  host: alias.example.com
+  routes:
+    - path: /
+      action:
+        pass: main-backend</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>server-tokens</code></td>
+                            <td><code>nginx.org/server-tokens</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/server-tokens: "false"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/server-tokens: "false"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>websocket-services</code></td>
+                            <td><code>nginx.org/websocket-services</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/websocket-services: "ws-service"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/websocket-services: "ws-service"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
             <!-- Proxy Settings -->
             <h3>Proxy Settings</h3>
             <div class="table-wrapper">
@@ -491,14 +1019,30 @@ spec:
                             <td><code>nginx.org/limit-req-*</code> or <span class="badge badge-policy">Policy</span> <code>rateLimit</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
-                            <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                            <div class="approach-tabs">
+                                <button class="approach-tab active" onclick="switchApproach(this, 'annotation')">Annotation Approach</button>
+                                <button class="approach-tab" onclick="switchApproach(this, 'crd')">CRD Approach</button>
                             </div>
-                            <div class="comparison">
-                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+                            <div class="approach-content active" data-approach="annotation">
+                                <div class="comparison">
+                                    <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
   nginx.ingress.kubernetes.io/limit-rps: "10"
   nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"</code></pre></div>
-                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: k8s.nginx.org/v1
+                                    <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/limit-req-rate: "10r/s"
+  nginx.org/limit-req-burst: "50"
+  nginx.org/limit-req-delay: "5"</code></pre></div>
+                                </div>
+                            </div>
+                            <div class="approach-content" data-approach="crd">
+                                <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
+                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                </div>
+                                <div class="comparison">
+                                    <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/limit-rps: "10"
+  nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"</code></pre></div>
+                                    <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: k8s.nginx.org/v1
 kind: Policy
 metadata:
   name: rate-limit
@@ -509,6 +1053,7 @@ spec:
     key: ${binary_remote_addr}
     zoneSize: 10M
     rejectCode: 429</code></pre></div>
+                                </div>
                             </div>
                         </div></td></tr>
                     </tbody>
@@ -558,15 +1103,31 @@ spec:
                             <td><code>nginx.org/rewrites</code> or <span class="badge badge-virtualserver">VirtualServer</span> <code>rewritePath</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
-                            <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                            <div class="approach-tabs">
+                                <button class="approach-tab active" onclick="switchApproach(this, 'annotation')">Annotation Approach</button>
+                                <button class="approach-tab" onclick="switchApproach(this, 'crd')">CRD Approach</button>
                             </div>
-                            <div class="comparison">
-                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+                            <div class="approach-content active" data-approach="annotation">
+                                <div class="comparison">
+                                    <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
   nginx.ingress.kubernetes.io/rewrite-target: /$2
   nginx.ingress.kubernetes.io/use-regex: "true"
 # path: /api(/|$)(.*)</code></pre></div>
-                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: k8s.nginx.org/v1
+                                    <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/rewrites: "serviceName=api-svc rewrite=/api"
+  nginx.org/path-regex: "case_sensitive"</code></pre></div>
+                                </div>
+                            </div>
+                            <div class="approach-content" data-approach="crd">
+                                <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
+                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                </div>
+                                <div class="comparison">
+                                    <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/rewrite-target: /$2
+  nginx.ingress.kubernetes.io/use-regex: "true"
+# path: /api(/|$)(.*)</code></pre></div>
+                                    <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
 spec:
   routes:
@@ -575,6 +1136,21 @@ spec:
         proxy:
           upstream: api
           rewritePath: /$2</code></pre></div>
+                                </div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><div class="annotation-list"><code>proxy-redirect-from</code><code>proxy-redirect-to</code></div></td>
+                            <td>ConfigMap or <code>nginx.org/server-snippets</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-redirect-from: "http://internal/"
+  nginx.ingress.kubernetes.io/proxy-redirect-to: "https://external/"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/server-snippets: |
+    proxy_redirect http://internal/ https://external/;</code></pre></div>
                             </div>
                         </div></td></tr>
                     </tbody>
@@ -586,11 +1162,67 @@ spec:
             <div class="table-wrapper">
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
-                        <tr><td><code>backend-protocol</code></td><td><code>nginx.org/ssl-services</code> or <code>nginx.org/grpc-services</code></td></tr>
-                        <tr><td><code>force-ssl-redirect</code></td><td><code>nginx.org/redirect-to-https</code></td></tr>
-                        <tr><td><code>ssl-ciphers</code></td><td><code>nginx.org/ssl-ciphers</code></td></tr>
-                        <tr><td><code>ssl-prefer-server-ciphers</code></td><td><code>nginx.org/ssl-prefer-server-ciphers</code></td></tr>
-                        <tr><td><code>ssl-redirect</code></td><td><code>nginx.org/redirect-to-https</code></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>backend-protocol</code></td>
+                            <td><code>nginx.org/ssl-services</code> or <code>nginx.org/grpc-services</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/ssl-services: "my-service"</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> For gRPC backends, use <code>nginx.org/grpc-services: "my-service"</code> instead.</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>force-ssl-redirect</code></td>
+                            <td><code>nginx.org/redirect-to-https</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/force-ssl-redirect: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/redirect-to-https: "true"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>ssl-ciphers</code></td>
+                            <td><code>nginx.org/ssl-ciphers</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/ssl-ciphers: "HIGH:!aNULL:!MD5"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/ssl-ciphers: "HIGH:!aNULL:!MD5"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>ssl-prefer-server-ciphers</code></td>
+                            <td><code>nginx.org/ssl-prefer-server-ciphers</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/ssl-prefer-server-ciphers: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/ssl-prefer-server-ciphers: "true"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>ssl-redirect</code></td>
+                            <td><code>nginx.org/redirect-to-https</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/ssl-redirect: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/redirect-to-https: "true"</code></pre></div>
+                            </div>
+                        </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>ssl-passthrough</code></td>
                             <td><span class="badge badge-transportserver">TransportServer</span> <code>TLS_PASSTHROUGH</code></td>
@@ -685,12 +1317,60 @@ spec:
             <div class="table-wrapper">
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
-                        <tr><td><code>proxy-connect-timeout</code></td><td><code>nginx.org/proxy-connect-timeout</code></td></tr>
-                        <tr><td><code>proxy-read-timeout</code></td><td><code>nginx.org/proxy-read-timeout</code></td></tr>
-                        <tr><td><code>proxy-send-timeout</code></td><td><code>nginx.org/proxy-send-timeout</code></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-connect-timeout</code></td>
+                            <td><code>nginx.org/proxy-connect-timeout</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-connect-timeout: "10s"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-read-timeout</code></td>
+                            <td><code>nginx.org/proxy-read-timeout</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "60"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-read-timeout: "60s"</code></pre></div>
+                            </div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>proxy-send-timeout</code></td>
+                            <td><code>nginx.org/proxy-send-timeout</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-send-timeout: "60"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-send-timeout: "60s"</code></pre></div>
+                            </div>
+                        </div></td></tr>
                     </tbody>
                 </table>
             </div>
+
+            <!-- Upstream Configuration -->
+            <h3>Upstream Configuration</h3>
+            <div class="table-wrapper">
+                <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
+                    <tbody>
+                        <tr><td><em>N/A</em></td><td><code>nginx.org/fail-timeout</code></td></tr>
+                        <tr><td><em>N/A</em></td><td><code>nginx.org/keepalive</code></td></tr>
+                        <tr><td><em>N/A</em></td><td><code>nginx.org/max-conns</code></td></tr>
+                        <tr><td><em>N/A</em></td><td><code>nginx.org/max-fails</code></td></tr>
+                        <tr><td><em>N/A</em></td><td><code>nginx.org/upstream-zone-size</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="info-box note"><strong>Note:</strong> These are Official NGINX-only annotations for fine-tuning upstream behavior. The community controller does not provide per-annotation control over these settings.</div>
         </section>
 
         <!-- Plus Mappings -->
@@ -739,6 +1419,47 @@ spec:
       query: [api_key]
     clientSecret: api-keys</code></pre></div>
                             </div>
+                        </div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Health Checks -->
+            <h3>Health Checks</h3>
+            <div class="table-wrapper">
+                <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
+                    <tbody>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><div class="annotation-list"><code>No direct equivalent</code><em>(passive only)</em></div></td>
+                            <td><span class="badge badge-virtualserver">VirtualServer</span> <span class="badge badge-plus">Plus</span> <code>upstreams[].healthCheck</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                            </div>
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># No active health check equivalent
+# Only passive health checks available</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress (Plus)</h5><pre><code>apiVersion: k8s.nginx.org/v1
+kind: VirtualServer
+spec:
+  upstreams:
+    - name: backend
+      service: my-service
+      port: 80
+      healthCheck:
+        enable: true
+        path: /health
+        interval: 5s
+        jitter: 2s
+        fails: 3
+        passes: 2
+        port: 8080
+        statusMatch: "200-399"
+        mandatory: true
+        persistent: true</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> Related annotations: <code>nginx.com/health-checks</code>, <code>nginx.com/health-checks-mandatory</code>, <code>nginx.com/slow-start</code>. Active health checks require NGINX Plus.</div>
                         </div></td></tr>
                     </tbody>
                 </table>
@@ -827,7 +1548,7 @@ spec:
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><div class="annotation-list"><code>affinity: "cookie"</code><code>session-cookie-change-on-failure</code><code>session-cookie-conditional-samesite-none</code><code>session-cookie-expires</code><code>session-cookie-max-age</code><code>session-cookie-name</code><code>session-cookie-path</code><code>session-cookie-samesite</code><code>session-cookie-secure</code></div></td>
+                            <td><div class="annotation-list"><code>affinity: "cookie"</code><code>affinity-mode</code><code>session-cookie-change-on-failure</code><code>session-cookie-conditional-samesite-none</code><code>session-cookie-domain</code><code>session-cookie-expires</code><code>session-cookie-max-age</code><code>session-cookie-name</code><code>session-cookie-path</code><code>session-cookie-samesite</code><code>session-cookie-secure</code></div></td>
                             <td><span class="badge badge-virtualserver">VirtualServer</span> <span class="badge badge-plus">Plus</span> <code>sessionCookie</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
@@ -1018,6 +1739,7 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                 <li><a href="https://docs.nginx.com/nginx-ingress-controller/configuration/policy-resource/" target="_blank">Policy Reference</a></li>
                 <li><a href="https://docs.nginx.com/nginx-ingress-controller/configuration/transportserver-resource/" target="_blank">TransportServer Reference</a></li>
                 <li><a href="https://github.com/nginx/kubernetes-ingress" target="_blank">GitHub Repository</a></li>
+                <li><a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank">Contribute to This Guide</a></li>
             </ul>
         </section>
     </main>
@@ -1025,7 +1747,7 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
     <footer>
         <div class="container">
             <p>NGINX Ingress Migration Guide</p>
-            <p><a href="https://github.com/nginx/kubernetes-ingress" target="_blank">Official NGINX Ingress on GitHub</a></p>
+            <p><a href="https://github.com/nginx/kubernetes-ingress" target="_blank">Official NGINX Ingress on GitHub</a> · <a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank">Contribute to This Guide</a></p>
         </div>
     </footer>
 
@@ -1053,13 +1775,33 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
         }
         function filterTable() {
             const term = document.getElementById('searchInput').value.toLowerCase();
-            document.querySelectorAll('.mapping-table tbody tr').forEach(row => {
-                if (row.classList.contains('example-row')) {
-                    if (term) { row.classList.remove('visible'); row.previousElementSibling?.classList.remove('expanded'); }
-                    return;
-                }
-                row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+            document.querySelectorAll('.mapping-table').forEach(table => {
+                let visibleCount = 0;
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    if (row.classList.contains('example-row')) {
+                        if (term) { row.classList.remove('visible'); row.previousElementSibling?.classList.remove('expanded'); }
+                        return;
+                    }
+                    const match = !term || row.textContent.toLowerCase().includes(term);
+                    row.style.display = match ? '' : 'none';
+                    if (match) visibleCount++;
+                });
+                const wrapper = table.closest('.table-wrapper');
+                if (!wrapper) return;
+                const h3 = wrapper.previousElementSibling;
+                const infoBox = wrapper.nextElementSibling;
+                const hidden = term && visibleCount === 0;
+                wrapper.style.display = hidden ? 'none' : '';
+                if (h3 && h3.tagName === 'H3') h3.style.display = hidden ? 'none' : '';
+                if (infoBox && infoBox.classList.contains('info-box')) infoBox.style.display = hidden ? 'none' : '';
             });
+        }
+        function switchApproach(btn, type) {
+            const container = btn.closest('.example-content');
+            container.querySelectorAll('.approach-tab').forEach(t => t.classList.remove('active'));
+            container.querySelectorAll('.approach-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            container.querySelector('.approach-content[data-approach="' + type + '"]').classList.add('active');
         }
         function copyInstall(btn, e) {
             e.stopPropagation();
