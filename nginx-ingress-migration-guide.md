@@ -5,7 +5,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ## Key Differences
 
 | Aspect | Kubernetes NGINX Ingress | Official NGINX Ingress |
-|--------|--------------------------|---------------------|
+| -------- | -------------------------- | --------------------- |
 | Annotation Prefix | `nginx.ingress.kubernetes.io/` | `nginx.org/` or `nginx.com/` |
 | CRD Support | Limited | VirtualServer, VirtualServerRoute, Policy, TransportServer |
 | NGINX Plus Support | No | Yes (with `nginx.com/` annotations) |
@@ -16,7 +16,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Timeouts and Buffering
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/proxy-connect-timeout` | `nginx.org/proxy-connect-timeout` |
 | `nginx.ingress.kubernetes.io/proxy-send-timeout` | `nginx.org/proxy-send-timeout` |
 | `nginx.ingress.kubernetes.io/proxy-read-timeout` | `nginx.org/proxy-read-timeout` |
@@ -32,7 +32,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### SSL/TLS Configuration
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/ssl-redirect` | `ingress.kubernetes.io/ssl-redirect` or `nginx.org/redirect-to-https` |
 | `nginx.ingress.kubernetes.io/force-ssl-redirect` | `nginx.org/redirect-to-https` |
 | `nginx.ingress.kubernetes.io/ssl-passthrough` | Use TransportServer CRD with `listener.protocol: TLS_PASSTHROUGH` |
@@ -46,7 +46,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Backend/Upstream Configuration
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/backend-protocol` | `nginx.org/ssl-services` (for HTTPS) or `nginx.org/grpc-services` (for gRPC) |
 | `nginx.ingress.kubernetes.io/proxy-ssl-secret` | **Policy CRD**: `EgressMTLS` with `tlsSecret` |
 | `nginx.ingress.kubernetes.io/proxy-ssl-verify` | **Policy CRD**: `EgressMTLS` with `verifyServer` |
@@ -65,7 +65,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Rewrites and Redirects
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/rewrite-target` | `nginx.org/rewrite-target` or VirtualServer CRD: `routes[].action.proxy.rewritePath` |
 | `nginx.ingress.kubernetes.io/app-root` | VirtualServer CRD: `routes[].action.redirect` with path `/` |
 | `nginx.ingress.kubernetes.io/use-regex` | `nginx.org/path-regex: "case_sensitive"` or `"case_insensitive"` |
@@ -79,7 +79,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Session Affinity / Sticky Sessions
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/affinity` | `nginx.com/sticky-cookie-services` (NGINX Plus) or VirtualServer CRD: `upstreams[].sessionCookie` |
 | `nginx.ingress.kubernetes.io/session-cookie-name` | VirtualServer CRD: `upstreams[].sessionCookie.name` |
 | `nginx.ingress.kubernetes.io/session-cookie-path` | VirtualServer CRD: `upstreams[].sessionCookie.path` |
@@ -93,7 +93,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Rate Limiting
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/limit-rps` | `nginx.org/limit-req-rate: "Xr/s"` or **Policy CRD**: `RateLimit` |
 | `nginx.ingress.kubernetes.io/limit-rpm` | `nginx.org/limit-req-rate: "Xr/m"` or **Policy CRD**: `RateLimit` |
 | `nginx.ingress.kubernetes.io/limit-connections` | ConfigMap or snippets (no direct annotation) |
@@ -105,7 +105,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Authentication
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/auth-type` (basic) | `nginx.org/basic-auth-secret` + `nginx.org/basic-auth-realm` or **Policy CRD**: `BasicAuth` |
 | `nginx.ingress.kubernetes.io/auth-secret` | `nginx.org/basic-auth-secret` or **Policy CRD**: `BasicAuth.secret` |
 | `nginx.ingress.kubernetes.io/auth-realm` | `nginx.org/basic-auth-realm` or **Policy CRD**: `BasicAuth.realm` |
@@ -116,7 +116,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### CORS
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/enable-cors` | Use `nginx.org/server-snippets` or `nginx.org/location-snippets` |
 | `nginx.ingress.kubernetes.io/cors-allow-origin` | Use snippets with `add_header Access-Control-Allow-Origin` |
 | `nginx.ingress.kubernetes.io/cors-allow-methods` | Use snippets with `add_header Access-Control-Allow-Methods` |
@@ -128,7 +128,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Canary Deployments / Traffic Splitting
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/canary` | **VirtualServer CRD**: `routes[].splits[]` |
 | `nginx.ingress.kubernetes.io/canary-weight` | **VirtualServer CRD**: `routes[].splits[].weight` |
 | `nginx.ingress.kubernetes.io/canary-by-header` | **VirtualServer CRD**: `routes[].matches[].conditions[].header` |
@@ -139,7 +139,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Access Control
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/whitelist-source-range` | **Policy CRD**: `AccessControl.allow` |
 | `nginx.ingress.kubernetes.io/denylist-source-range` | **Policy CRD**: `AccessControl.deny` |
 | `nginx.ingress.kubernetes.io/satisfy` | Use `nginx.org/location-snippets` with `satisfy any/all;` |
@@ -147,7 +147,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Custom Configuration Snippets
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/configuration-snippet` | `nginx.org/location-snippets` |
 | `nginx.ingress.kubernetes.io/server-snippet` | `nginx.org/server-snippets` |
 | `nginx.ingress.kubernetes.io/stream-snippet` | TransportServer CRD or GlobalConfiguration |
@@ -155,7 +155,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Headers
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/proxy-hide-headers` | `nginx.org/proxy-hide-headers` |
 | `nginx.ingress.kubernetes.io/proxy-pass-headers` | `nginx.org/proxy-pass-headers` |
 | `nginx.ingress.kubernetes.io/custom-headers` | VirtualServer CRD: `routes[].action.proxy.responseHeaders.add` |
@@ -165,7 +165,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Health Checks
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | N/A (passive only) | `nginx.com/health-checks` (NGINX Plus) |
 | N/A | VirtualServer CRD: `upstreams[].healthCheck` (NGINX Plus) |
 | N/A | `nginx.com/health-checks-mandatory` |
@@ -174,7 +174,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Upstream Configuration
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | N/A | `nginx.org/max-fails` |
 | N/A | `nginx.org/fail-timeout` |
 | N/A | `nginx.org/max-conns` |
@@ -184,7 +184,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### WAF / ModSecurity
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/enable-modsecurity` | `appprotect.f5.com/app-protect-enable` or **Policy CRD**: `WAF` |
 | `nginx.ingress.kubernetes.io/enable-owasp-core-rules` | **Policy CRD**: `WAF.apPolicy` (reference NGINX App Protect policy) |
 | `nginx.ingress.kubernetes.io/modsecurity-snippet` | **Policy CRD**: `WAF` with custom policy |
@@ -193,7 +193,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### Miscellaneous
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | `nginx.ingress.kubernetes.io/server-alias` | Create additional VirtualServer resources |
 | `nginx.ingress.kubernetes.io/default-backend` | VirtualServer CRD: `routes[].errorPages` |
 | `nginx.ingress.kubernetes.io/custom-http-errors` | VirtualServer CRD: `routes[].errorPages[].codes` |
@@ -209,7 +209,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 ### HSTS
 
 | Kubernetes NGINX Ingress Annotation | Official NGINX Annotation/CRD |
-|-------------------------------------|---------------------------|
+| ------------------------------------- | --------------------------- |
 | N/A (ConfigMap only) | `nginx.org/hsts` |
 | N/A | `nginx.org/hsts-max-age` |
 | N/A | `nginx.org/hsts-include-subdomains` |
@@ -224,6 +224,7 @@ This guide helps you migrate from the **Kubernetes community NGINX Ingress Contr
 #### Example: SSL Passthrough with TransportServer CRD
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -246,6 +247,7 @@ spec:
 ```
 
 **Official NGINX TransportServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: TransportServer
@@ -265,6 +267,7 @@ spec:
 ```
 
 > **Note:** Requires GlobalConfiguration with a TLS_PASSTHROUGH listener:
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: GlobalConfiguration
@@ -283,6 +286,7 @@ spec:
 #### Example: Backend/Egress mTLS with EgressMTLS Policy
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -312,6 +316,7 @@ spec:
 ```
 
 **Official NGINX EgressMTLS Policy CRD:**
+
 ```yaml
 # Secret for client certificate (must be kubernetes.io/tls type)
 apiVersion: v1
@@ -377,6 +382,7 @@ spec:
 #### Example: Advanced Upstream Settings with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -405,6 +411,7 @@ spec:
 ```
 
 **Official NGINX VirtualServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -447,6 +454,7 @@ spec:
 > No direct equivalent - only passive health checks available
 
 **Official NGINX VirtualServer CRD (NGINX Plus):**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -491,6 +499,7 @@ spec:
 #### Example: Permanent Redirect with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -514,6 +523,7 @@ spec:
 ```
 
 **Official NGINX VirtualServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -534,6 +544,7 @@ spec:
 #### Example: Temporal Redirect with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/temporal-redirect: "https://maintenance.example.com"
@@ -541,6 +552,7 @@ annotations:
 ```
 
 **Official NGINX VirtualServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -561,12 +573,14 @@ spec:
 #### Example: App Root Redirect with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/app-root: "/dashboard"
 ```
 
 **Official NGINX VirtualServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -602,12 +616,14 @@ spec:
 #### Example: WWW to Non-WWW Redirect (and vice versa)
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
 ```
 
 **Official NGINX VirtualServer CRD (www to non-www):**
+
 ```yaml
 # Redirect www.example.com to example.com
 apiVersion: k8s.nginx.org/v1
@@ -649,6 +665,7 @@ spec:
 #### Example: Basic Authentication with Policy CRD
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -673,6 +690,7 @@ spec:
 ```
 
 **Official NGINX BasicAuth Policy CRD:**
+
 ```yaml
 # Create htpasswd secret (type must be nginx.org/htpasswd)
 # Generate with: htpasswd -c auth username
@@ -721,6 +739,7 @@ spec:
 > No direct equivalent - external auth required
 
 **Official NGINX JWT Policy CRD (NGINX Plus):**
+
 ```yaml
 # Option 1: JWT secret stored in Kubernetes
 apiVersion: v1
@@ -781,6 +800,7 @@ spec:
 #### Example: OIDC Authentication with Policy CRD (NGINX Plus)
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/auth-url: "https://auth.example.com/oauth2/auth"
@@ -789,6 +809,7 @@ annotations:
 ```
 
 **Official NGINX OIDC Policy CRD (NGINX Plus):**
+
 ```yaml
 # OIDC client secret
 apiVersion: v1
@@ -847,6 +868,7 @@ spec:
 > No direct equivalent
 
 **Official NGINX APIKey Policy CRD:**
+
 ```yaml
 # API key secret (hashed with SHA-256)
 # Keys are stored as: name: sha256-hash
@@ -902,6 +924,7 @@ spec:
 #### Example: Basic Rate Limiting with Policy CRD
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -912,6 +935,7 @@ metadata:
 ```
 
 **Official NGINX Ingress (Policy CRD):**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: Policy
@@ -945,6 +969,7 @@ spec:
 #### Example: Canary Deployment with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 # Main Ingress
 apiVersion: networking.k8s.io/v1
@@ -985,6 +1010,7 @@ spec:
 ```
 
 **Official NGINX Ingress (VirtualServer CRD):**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1013,6 +1039,7 @@ spec:
 #### Example: Canary by Header with VirtualServer
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/canary: "true"
@@ -1021,6 +1048,7 @@ annotations:
 ```
 
 **Official NGINX VirtualServer:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1050,6 +1078,7 @@ spec:
 #### Example: mTLS Client Authentication
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/auth-tls-secret: "namespace/ca-secret"
@@ -1058,6 +1087,7 @@ annotations:
 ```
 
 **Official NGINX Ingress (Policy CRD):**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: Policy
@@ -1092,6 +1122,7 @@ spec:
 #### Example: Session Affinity / Sticky Sessions
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/affinity: "cookie"
@@ -1102,6 +1133,7 @@ annotations:
 ```
 
 **Official NGINX VirtualServer (NGINX Plus):**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1128,6 +1160,7 @@ spec:
 #### Example: URL Rewriting
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/rewrite-target: /$2
@@ -1141,6 +1174,7 @@ spec:
 ```
 
 **Official NGINX VirtualServer:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1167,6 +1201,7 @@ spec:
 #### Example: Advanced Rate Limiting with Conditions (NGINX Plus)
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/limit-rps: "100"
@@ -1174,6 +1209,7 @@ annotations:
 ```
 
 **Official NGINX RateLimit Policy with Conditions (NGINX Plus):**
+
 ```yaml
 # Rate limit policy with JWT-based conditions
 apiVersion: k8s.nginx.org/v1
@@ -1249,6 +1285,7 @@ spec:
 #### Example: Rate Limiting with Dry Run and Scaling
 
 **Official NGINX RateLimit Policy with Scale and Dry Run:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: Policy
@@ -1277,12 +1314,14 @@ spec:
 #### Example: Access Control (IP Whitelist/Denylist)
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12"
 ```
 
 **Official NGINX AccessControl Policy CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: Policy
@@ -1318,12 +1357,14 @@ spec:
 #### Example: IP Denylist with AccessControl Policy
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/denylist-source-range: "203.0.113.0/24,198.51.100.0/24"
 ```
 
 **Official NGINX AccessControl Policy CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: Policy
@@ -1346,12 +1387,14 @@ spec:
 #### Example: Custom Response Headers with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/custom-headers: "default/custom-headers-configmap"
 ```
 
 **Official NGINX VirtualServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1394,6 +1437,7 @@ spec:
 #### Example: Request Header Manipulation with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/upstream-vhost: "backend.internal"
@@ -1401,6 +1445,7 @@ annotations:
 ```
 
 **Official NGINX VirtualServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1439,6 +1484,7 @@ spec:
 #### Example: Custom HTTP Error Pages with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -1462,6 +1508,7 @@ spec:
 ```
 
 **Official NGINX VirtualServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1516,6 +1563,7 @@ spec:
 #### Example: WAF with NGINX App Protect Policy CRD
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/enable-modsecurity: "true"
@@ -1526,6 +1574,7 @@ annotations:
 ```
 
 **Official NGINX WAF Policy CRD (requires NGINX App Protect):**
+
 ```yaml
 # App Protect Policy (defines WAF rules)
 apiVersion: appprotect.f5.com/v1beta1
@@ -1605,6 +1654,7 @@ spec:
 > No direct equivalent - requires custom snippets
 
 **Official NGINX Cache Policy CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: Policy
@@ -1671,6 +1721,7 @@ spec:
 #### Example: A/B Testing with Multiple Conditions
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/canary: "true"
@@ -1679,6 +1730,7 @@ annotations:
 ```
 
 **Official NGINX VirtualServer with Complex Matching:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1738,6 +1790,7 @@ spec:
 #### Example: Canary with Header Pattern Matching
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/canary: "true"
@@ -1745,6 +1798,7 @@ annotations:
 ```
 
 **Official NGINX VirtualServer with Variable Condition:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1779,6 +1833,7 @@ spec:
 #### Example: Delegating Routes to Different Teams
 
 **Official NGINX VirtualServer with VirtualServerRoute:**
+
 ```yaml
 # Main VirtualServer (owned by platform team)
 apiVersion: k8s.nginx.org/v1
@@ -1862,6 +1917,7 @@ spec:
 #### Example: CORS with Server Snippets
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/enable-cors: "true"
@@ -1873,6 +1929,7 @@ annotations:
 ```
 
 **Official NGINX VirtualServer with Snippets:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1917,6 +1974,7 @@ spec:
 #### Example: gRPC Backend with VirtualServer
 
 **Kubernetes NGINX Ingress (annotation-based):**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
@@ -1924,6 +1982,7 @@ annotations:
 ```
 
 **Official NGINX VirtualServer CRD:**
+
 ```yaml
 apiVersion: k8s.nginx.org/v1
 kind: VirtualServer
@@ -1963,7 +2022,7 @@ The following advanced features in Official NGINX Ingress Controller are **only 
 ### VirtualServer CRD Features
 
 | Feature | VirtualServer Field | Description |
-|---------|---------------------|-------------|
+| --------- | --------------------- | ------------- |
 | Traffic Splitting | `routes[].splits[]` | Weighted traffic distribution across upstreams |
 | Content-Based Routing | `routes[].matches[]` | Route based on headers, cookies, arguments, variables |
 | Advanced Health Checks | `upstreams[].healthCheck` | Active health checks with custom endpoints (NGINX Plus) |
@@ -1984,7 +2043,7 @@ The following advanced features in Official NGINX Ingress Controller are **only 
 ### Policy CRD Features
 
 | Feature | Policy Type | Description |
-|---------|------------|-------------|
+| --------- | ------------ | ------------- |
 | JWT Authentication | `jwt` | Validate JWTs against secrets or JWKS URIs (NGINX Plus) |
 | OIDC Authentication | `oidc` | OpenID Connect integration (NGINX Plus) |
 | API Key Authentication | `apiKey` | Validate API keys in headers or query params |
@@ -1999,7 +2058,7 @@ The following advanced features in Official NGINX Ingress Controller are **only 
 ### TransportServer CRD Features
 
 | Feature | TransportServer Field | Description |
-|---------|----------------------|-------------|
+| --------- | ---------------------- | ------------- |
 | TCP Load Balancing | `listener.protocol: TCP` | Layer 4 TCP load balancing |
 | UDP Load Balancing | `listener.protocol: UDP` | Layer 4 UDP load balancing |
 | TLS Passthrough | `listener.protocol: TLS_PASSTHROUGH` | Pass encrypted traffic directly to backend |
@@ -2009,7 +2068,7 @@ The following advanced features in Official NGINX Ingress Controller are **only 
 ### GlobalConfiguration CRD Features
 
 | Feature | GlobalConfiguration Field | Description |
-|---------|---------------------------|-------------|
+| --------- | --------------------------- | ------------- |
 | Custom Listeners | `listeners[]` | Define custom HTTP/HTTPS/TCP/UDP listeners |
 | Custom Ports | `listeners[].port` | Listen on non-standard ports |
 | TLS Passthrough Listener | `listeners[].protocol: TLS_PASSTHROUGH` | Enable SSL passthrough capability |
@@ -2018,9 +2077,10 @@ The following advanced features in Official NGINX Ingress Controller are **only 
 
 ## TransportServer Examples (TCP/UDP)
 
-#### Example: TCP Load Balancing
+### Example: TCP Load Balancing
 
 **Kubernetes NGINX Ingress:**
+
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/stream-snippet: |
@@ -2031,6 +2091,7 @@ annotations:
 ```
 
 **Official NGINX TransportServer CRD:**
+
 ```yaml
 # GlobalConfiguration to define the listener
 apiVersion: k8s.nginx.org/v1
@@ -2078,6 +2139,7 @@ spec:
 #### Example: UDP Load Balancing (DNS)
 
 **Official NGINX TransportServer CRD:**
+
 ```yaml
 # GlobalConfiguration for UDP listener
 apiVersion: k8s.nginx.org/v1
@@ -2136,7 +2198,7 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
 ## Quick Reference: Annotation to CRD Mapping
 
 | When You See This K8s NGINX Annotation | Use This Official NGINX Resource |
-|----------------------------------------|------------------------------|
+| ---------------------------------------- | ------------------------------ |
 | `canary*` annotations | VirtualServer with `splits[]` or `matches[]` |
 | `auth-tls-*` annotations | Policy with `ingressMTLS` |
 | `proxy-ssl-*` annotations | Policy with `egressMTLS` |

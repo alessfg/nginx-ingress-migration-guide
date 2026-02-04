@@ -10,15 +10,40 @@
 
 ## Requirements
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam elit turpis, varius et arcu elementum, viverra rhoncus sem. Aliquam nec sodales magna, et egestas enim. Mauris lobortis ultrices euismod. Pellentesque in arcu lacus. Mauris cursus laoreet nulla, ac vehicula est. Vestibulum eu mauris quis lorem consectetur aliquam ac nec quam. Vestibulum commodo pharetra mi, at bibendum neque faucibus ut. Mauris et tortor sed sem consectetur eleifend ut non magna. Praesent feugiat placerat nibh, varius viverra orci bibendum sed. Vestibulum dapibus ex ut pulvinar facilisis. Quisque sodales enim et augue tempor mattis. Suspendisse finibus congue felis, ac blandit ligula. Praesent condimentum ultrices odio quis semper. Nunc ultrices, nibh quis mattis pellentesque, elit nulla bibendum felis, quis dapibus erat turpis ac urna.
+This guide is useful for teams and individuals who:
+
+- Are currently using the Kubernetes community NGINX Ingress Controller (`kubernetes/ingress-nginx`)
+- Want to migrate to the Official NGINX Ingress Controller (`nginx/kubernetes-ingress`)
+- Need to understand annotation mappings and configuration differences between the two controllers
+- Want to leverage advanced features like CRDs (VirtualServer, Policy, TransportServer) available in the Official controller
+
+No special software requirements are needed to view this guide - it can be accessed via the HTML interface or read directly from the markdown file.
 
 ## Getting Started
 
-Duis sit amet sapien vel velit ornare vulputate. Nulla rutrum euismod risus ac efficitur. Curabitur in sagittis elit, a semper leo. Suspendisse malesuada aliquam velit, eu suscipit lorem vehicula at. Proin turpis lacus, semper in placerat in, accumsan non ipsum. Cras euismod, elit eget pretium laoreet, tortor nulla finibus tortor, nec hendrerit elit turpis ut eros. Quisque congue nisi id mauris molestie, eu condimentum dolor rutrum. Nullam eleifend elit ac lobortis tristique. Pellentesque nec tellus non mauris aliquet commodo a eu elit. Ut at feugiat metus, at tristique mauris. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae;
+You can access this migration guide in three ways:
+
+1. **Online**: Visit the hosted version at <https://alessfg.github.io/nginx-ingress-migration-guide/>
+2. **HTML Interface**: Open `index.html` in a web browser for an interactive experience with searchable tables and expandable examples
+3. **Markdown Document**: Read `nginx-ingress-migration-guide.md` directly for a comprehensive text-based reference
+
+The guide is organized into sections covering:
+
+- Key differences between the two ingress controllers
+- Comprehensive annotation mapping tables
+- Configuration examples and migration patterns
+- CRD usage for advanced features
 
 ## How to Use
 
-Maecenas at vehicula justo. Suspendisse posuere elementum elit vel posuere. Etiam quis pulvinar massa. Integer tempor semper risus, vitae maximus eros ullamcorper vitae. In egestas, ex vitae gravida sodales, ipsum dolor varius est, et cursus lorem dui a mi. Morbi faucibus ut nisi id faucibus. Sed quis ullamcorper ex. In et dolor id nunc interdum suscipit.
+This migration guide provides side-by-side comparisons of annotations and configurations:
+
+1. **Find your current annotation**: Look up the Kubernetes NGINX Ingress annotation you're currently using (prefix: `nginx.ingress.kubernetes.io/`)
+2. **Identify the equivalent**: Find the corresponding Official NGINX Ingress annotation (prefix: `nginx.org/` or `nginx.com/`) or CRD configuration
+3. **Review examples**: Check the detailed examples provided for complex features like TLS configuration, rate limiting, and canary deployments
+4. **Plan your migration**: Use the tables to create a comprehensive migration plan for your ingress resources
+
+For features that require CRDs (Custom Resource Definitions) instead of annotations, refer to the specific CRD sections which provide YAML examples and configuration patterns.
 
 ## Contributing
 
