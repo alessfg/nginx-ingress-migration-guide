@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive migration guide for transitioning from Kubernetes community NGINX Ingress Controller to the Official NGINX Ingress Controller. Includes YAML analyzer, annotation mappings, and CRD examples.">
+    <meta name="keywords" content="NGINX, Ingress, Kubernetes, Migration, Controller, CRD, VirtualServer, Policy">
+    <meta name="author" content="F5, Inc.">
     <title>NGINX Ingress Migration Guide</title>
     <style>
         :root {
@@ -23,6 +26,8 @@
         header { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; padding: 40px 0; margin-bottom: 30px; }
         header h1 { font-size: 2.5rem; margin-bottom: 10px; }
         header p { font-size: 1.1rem; opacity: 0.9; }
+        .header-layout { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         nav { background: var(--card-bg); padding: 15px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
         nav a { color: var(--primary-color); text-decoration: none; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; transition: all 0.3s; }
@@ -39,8 +44,10 @@
         th { background: var(--primary-color); color: white; font-weight: 600; }
         tr.expandable { cursor: pointer; transition: background-color 0.2s; }
         tr.expandable:hover { background-color: #e8f5e9; }
-        tr.expandable td:first-child { display: flex; align-items: baseline; }
-        tr.expandable td:first-child::before { content: '▶'; flex-shrink: 0; margin-right: 8px; font-size: 0.7rem; transition: transform 0.2s; color: var(--primary-color); }
+        tr.expandable:focus { outline: 2px solid var(--primary-color); outline-offset: -2px; background-color: #e8f5e9; }
+        tr.expandable:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
+        tr.expandable td:first-child { position: relative; padding-left: 24px; }
+        tr.expandable td:first-child::before { content: '▶'; position: absolute; left: 8px; top: 14px; font-size: 0.7rem; transition: transform 0.2s; color: var(--primary-color); }
         tr.expandable.expanded td:first-child::before { transform: rotate(90deg); }
         tr.example-row { display: none; }
         tr.example-row.visible { display: table-row; }
@@ -62,11 +69,11 @@
         .badge-virtualserver { background: #e3f2fd; color: #1565c0; }
         .badge-virtualserverroute { background: #e8eaf6; color: #283593; }
         .badge-policy { background: #f3e5f5; color: #7b1fa2; }
-        .badge-transportserver { background: #fff3e0; color: #ef6c00; }
+        .badge-transportserver { background: #fff3e0; color: #bf4000; }
         .badge-globalconfiguration { background: #efebe9; color: #4e342e; }
-        .badge-plus { background: #fff3e0; color: #e65100; }
+        .badge-plus { background: #fff3e0; color: #bf360c; }
         .badge-annotation { background: #e0f2f1; color: #00695c; }
-        .badge-configmap { background: #fff9c4; color: #f57f17; }
+        .badge-configmap { background: #fff9c4; color: #8c6d00; }
         .badge-oss { background: #e8f5e9; color: #2e7d32; }
         .install-box { background: linear-gradient(135deg, #1a237e, #283593); color: white; padding: 15px 20px; border-radius: 8px; margin: 20px 0 15px; }
         .install-box h6 { margin: 0 0 10px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
@@ -80,6 +87,8 @@
         .controls input[type="text"] { padding: 10px 16px; border: 2px solid var(--border-color); border-radius: 6px; font-size: 0.9rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s; min-width: 240px; flex: 1; max-width: 400px; }
         .controls input[type="text"]:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0,150,57,0.12); }
         .controls input[type="text"]::placeholder { color: #999; }
+        .search-count { font-size: 0.82rem; color: #666; white-space: nowrap; }
+        .search-count.no-results { color: #c62828; }
         .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s; }
         .btn-primary { background: var(--primary-color); color: white; }
         .btn-primary:hover { background: var(--primary-dark); }
@@ -130,7 +139,7 @@
         .analyzer-pill[data-scroll]:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
         .analyzer-pill.found { background: #e8f5e9; color: #2e7d32; }
         .analyzer-pill.paths { background: #e3f2fd; color: #1565c0; }
-        .analyzer-pill.crds { background: #fff3e0; color: #ef6c00; }
+        .analyzer-pill.crds { background: #fff3e0; color: #bf4000; }
         .analyzer-pill.unrecognized { background: #ffebee; color: #c62828; }
         .analyzer-card { background: var(--card-bg); border-radius: 8px; padding: 16px 20px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid var(--primary-color); }
         .analyzer-card.type-annotation { border-left-color: #00897b; }
@@ -214,6 +223,13 @@
             .analyzer-copy-all { width: 100%; justify-content: center; }
             .analyzer-download-btn { width: 100%; justify-content: center; }
             .analyzer-export-actions { flex-direction: column; }
+            .mapping-table th, .mapping-table td { white-space: normal; word-break: break-word; font-size: 0.82rem; padding: 10px 8px; }
+            .mapping-table code { font-size: 0.75rem; word-break: break-all; }
+            header h1 { font-size: 1.8rem; }
+            header p { font-size: 0.95rem; }
+            nav ul { gap: 5px; }
+            nav a { padding: 6px 10px; font-size: 0.8rem; }
+            .sample-dropdown-menu { min-width: 260px; left: auto; right: 0; }
         }
         .analyzer-empty-state { text-align: center; padding: 40px 20px; color: #999; }
         .analyzer-empty-state svg { margin-bottom: 12px; opacity: 0.4; }
@@ -270,6 +286,7 @@
         body.dark-mode h3 { color: #64b5f6; }
         body.dark-mode th { background: #006b2b; }
         body.dark-mode tr.expandable:hover { background-color: rgba(102,187,106,0.1); }
+        body.dark-mode tr.expandable:focus { outline-color: #66bb6a; background-color: rgba(102,187,106,0.1); }
         body.dark-mode tr:not(.expandable):not(.example-row):hover { background-color: rgba(255,255,255,0.03); }
         body.dark-mode tr.example-row td { background: #0f3460; }
         body.dark-mode .example-content { background: #16213e; border-left-color: #66bb6a; }
@@ -316,13 +333,40 @@
         .annotation-tooltip { position: relative; cursor: help; }
         .annotation-tooltip::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; white-space: nowrap; max-width: 320px; white-space: normal; line-height: 1.4; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         .annotation-tooltip::before { content: ''; position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #333; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 20; }
-        .annotation-tooltip:hover::after, .annotation-tooltip:hover::before { opacity: 1; }
+        .annotation-tooltip:hover::after, .annotation-tooltip:hover::before, .annotation-tooltip:focus::after, .annotation-tooltip:focus::before { opacity: 1; }
+        .sample-dropdown { position: relative; display: inline-block; }
+        .sample-dropdown-btn { display: inline-flex; align-items: center; gap: 6px; }
+        .sample-dropdown-btn::after { content: '\25BC'; font-size: 0.6rem; opacity: 0.7; }
+        .sample-dropdown-menu { display: none; position: absolute; bottom: calc(100% + 6px); left: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); min-width: 280px; max-width: calc(100vw - 40px); z-index: 50; overflow: hidden; }
+        .sample-dropdown-menu.visible { display: block; animation: analyzerFadeIn 0.15s ease; }
+        .sample-dropdown-item { padding: 12px 16px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--border-color); }
+        .sample-dropdown-item:last-child { border-bottom: none; }
+        .sample-dropdown-item:hover { background: #e8f5e9; }
+        .sample-dropdown-item .sample-title { font-weight: 600; font-size: 0.88rem; color: var(--text-color); display: flex; align-items: center; gap: 6px; }
+        .sample-dropdown-item .sample-desc { font-size: 0.78rem; color: #888; margin-top: 2px; }
+        .sample-dropdown-item .sample-badge { font-size: 0.68rem; padding: 2px 7px; border-radius: 8px; font-weight: 600; }
+        .sample-badge.simple { background: #e8f5e9; color: #2e7d32; }
+        .sample-badge.moderate { background: #fff9c4; color: #f57f17; }
+        .sample-badge.advanced { background: #fce4ec; color: #c62828; }
+        body.dark-mode .sample-dropdown-menu { background: #16213e; border-color: #2a2a4a; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        body.dark-mode .sample-dropdown-item:hover { background: rgba(102,187,106,0.1); }
+        body.dark-mode .sample-dropdown-item { border-bottom-color: #2a2a4a; }
+        .scroll-to-top { position: fixed; bottom: 30px; right: 30px; width: 44px; height: 44px; border-radius: 50%; background: var(--primary-color); color: white; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 3px 12px rgba(0,0,0,0.2); z-index: 200; transition: opacity 0.2s, transform 0.2s; }
+        .scroll-to-top:hover { transform: scale(1.1); background: var(--primary-dark); }
+        .scroll-to-top.visible { display: flex; }
+        body.dark-mode .scroll-to-top { background: #66bb6a; color: #1a1a2e; }
+        body.dark-mode .scroll-to-top:hover { background: #81c784; }
+        .skip-link { position: absolute; top: -50px; left: 20px; padding: 10px 18px; background: var(--primary-color); color: white; text-decoration: none; border-radius: 0 0 8px 8px; z-index: 1000; transition: top 0.2s; font-weight: 600; }
+        .skip-link:focus { top: 0; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
         @media print {
             nav, header, footer, .analyzer-actions, .analyzer-input-status, .analyzer-drop-zone, .analyzer-copy-btn, .analyzer-copy-all, .analyzer-download-btn, .analyzer-edit-btn, .analyzer-yaml-expand, .analyzer-empty-state, .controls, .legend, .analyzer-export-actions { display: none !important; }
             section { box-shadow: none; break-inside: avoid; }
             .analyzer-yaml-output { background: #f5f5f5 !important; color: #333 !important; border: 1px solid #ccc; }
             .analyzer-yaml-output.collapsed { max-height: none !important; overflow: visible !important; }
             .analyzer-yaml-output.collapsed::after { display: none !important; }
+            tr.example-row { display: table-row !important; }
+            tr.expandable td:first-child::before { content: '' !important; }
             .yaml-key { color: #0066b3 !important; }
             .yaml-value { color: #c62828 !important; }
             .yaml-comment { color: #666 !important; }
@@ -334,18 +378,19 @@
     </style>
 </head>
 <body>
+    <a href="#analyzer" class="skip-link">Skip to main content</a>
     <header>
-        <div class="container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
+        <div class="container header-layout">
             <div>
                 <h1>NGINX Ingress Migration Guide</h1>
                 <p>Migrate from Kubernetes Community NGINX Ingress to Official NGINX Ingress Controller</p>
             </div>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <button class="dark-toggle" id="darkToggle" onclick="toggleDarkMode()">
+            <div class="header-actions">
+            <button class="dark-toggle" id="darkToggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode">
                 <svg id="darkIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                 <span id="darkLabel">Dark Mode</span>
             </button>
-            <a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);color:white;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:0.9rem;border:1px solid rgba(255,255,255,0.3);transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            <a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank" rel="noopener noreferrer" aria-label="Contribute on GitHub (opens in new tab)" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);color:white;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:0.9rem;border:1px solid rgba(255,255,255,0.3);transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
                 <svg width="20" height="20" viewBox="0 0 16 16" fill="white"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
                 Contribute on GitHub
             </a>
@@ -353,28 +398,28 @@
         </div>
     </header>
 
-    <nav>
+    <nav role="navigation" aria-label="Main navigation">
         <div class="container">
-            <ul>
-                <li><a href="#analyzer">YAML Analyzer</a></li>
-                <li><a href="#differences">Key Differences</a></li>
-                <li><a href="#oss-mappings">OSS Mappings</a></li>
-                <li><a href="#plus-mappings">Plus Mappings</a></li>
-                <li><a href="#features">CRD Features</a></li>
-                <li><a href="#installation">Installation</a></li>
-                <li><a href="#checklist">Checklist</a></li>
+            <ul role="menubar">
+                <li role="none"><a role="menuitem" href="#analyzer">YAML Analyzer</a></li>
+                <li role="none"><a role="menuitem" href="#differences">Key Differences</a></li>
+                <li role="none"><a role="menuitem" href="#oss-mappings">OSS Mappings</a></li>
+                <li role="none"><a role="menuitem" href="#plus-mappings">Plus Mappings</a></li>
+                <li role="none"><a role="menuitem" href="#features">CRD Features</a></li>
+                <li role="none"><a role="menuitem" href="#installation">Installation</a></li>
+                <li role="none"><a role="menuitem" href="#checklist">Checklist</a></li>
             </ul>
         </div>
     </nav>
 
-    <main class="container">
+    <main class="container" role="main" aria-label="Migration guide content">
         <!-- YAML Migration Analyzer -->
         <section id="analyzer">
             <h2 id="yaml-analyzer">YAML Migration Analyzer</h2>
             <p>Paste a Kubernetes Ingress YAML manifest that uses community NGINX Ingress annotations to get migration suggestions for the Official NGINX Ingress Controller.</p>
             <div class="analyzer-drop-zone" id="dropZone">
                 <div class="analyzer-drop-overlay"><span class="analyzer-drop-label">Drop YAML file here</span></div>
-                <textarea id="yamlInput" placeholder="apiVersion: networking.k8s.io/v1
+                <textarea id="yamlInput" aria-label="YAML input for migration analysis" placeholder="apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: my-ingress
@@ -392,10 +437,26 @@ spec:
             <div class="analyzer-actions">
                 <button class="btn btn-primary" onclick="analyzeYaml()">Analyze YAML</button>
                 <button class="btn btn-secondary" onclick="clearAnalyzer()">Clear</button>
-                <button class="btn btn-secondary" onclick="loadSampleYaml()">Load Sample</button>
+                <div class="sample-dropdown">
+                    <button class="btn btn-secondary sample-dropdown-btn" onclick="toggleSampleDropdown(event)" aria-expanded="false" aria-haspopup="true" aria-controls="sampleDropdown">Load Sample</button>
+                    <div class="sample-dropdown-menu" id="sampleDropdown" role="menu" aria-label="Sample YAML presets">
+                        <div class="sample-dropdown-item" role="menuitem" tabindex="0" onclick="loadSampleYaml('simple')" onkeydown="if(event.key==='Enter')loadSampleYaml('simple')">
+                            <div class="sample-title"><span class="sample-badge simple">Simple</span> Basic Proxy</div>
+                            <div class="sample-desc">SSL redirect, timeouts, body size — annotation-only migration</div>
+                        </div>
+                        <div class="sample-dropdown-item" role="menuitem" tabindex="0" onclick="loadSampleYaml('moderate')" onkeydown="if(event.key==='Enter')loadSampleYaml('moderate')">
+                            <div class="sample-title"><span class="sample-badge moderate">Moderate</span> Production App</div>
+                            <div class="sample-desc">Rewrites, rate limiting, CORS, access control — requires CRDs</div>
+                        </div>
+                        <div class="sample-dropdown-item" role="menuitem" tabindex="0" onclick="loadSampleYaml('advanced')" onkeydown="if(event.key==='Enter')loadSampleYaml('advanced')">
+                            <div class="sample-title"><span class="sample-badge advanced">Advanced</span> Enterprise Stack</div>
+                            <div class="sample-desc">mTLS, session affinity, WAF — requires NGINX Plus</div>
+                        </div>
+                    </div>
+                </div>
                 <span style="font-size:0.78rem;color:#999;margin-left:4px;align-self:center;">Ctrl+Enter to analyze</span>
             </div>
-            <div id="analyzerResults"></div>
+            <div id="analyzerResults" role="region" aria-label="Analysis results"><div id="analyzerLiveStatus" aria-live="polite" class="sr-only"></div></div>
         </section>
 
         <!-- Key Differences -->
@@ -416,7 +477,7 @@ spec:
 
         <!-- OSS Mappings -->
         <section id="oss-mappings">
-            <h2 id="oss-mappings">NGINX Open Source Mappings</h2>
+            <h2 id="oss-mappings-heading">NGINX Open Source Mappings</h2>
             <p>These features are available in both NGINX Open Source and NGINX Plus editions.</p>
 
             <div class="info-box tip" style="margin: 20px 0;">
@@ -430,9 +491,10 @@ spec:
             </div>
 
             <div class="controls">
-                <input type="text" id="searchInput" placeholder="Search annotations..." onkeyup="filterTable()">
-                <button class="btn btn-primary" onclick="expandAllExamples()">Expand All</button>
-                <button class="btn btn-secondary" onclick="collapseAllExamples()">Collapse All</button>
+                <input type="text" id="searchInput" placeholder="Search annotations..." onkeyup="filterTable('oss')" aria-label="Search annotations">
+                <span id="searchCount" class="search-count" aria-live="polite"></span>
+                <button class="btn btn-primary" onclick="expandAllExamples(this)">Expand All</button>
+                <button class="btn btn-secondary" onclick="collapseAllExamples(this)">Collapse All</button>
             </div>
 
             <div class="legend">
@@ -456,7 +518,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -520,7 +582,7 @@ spec:
                             </div>
                             <div class="approach-content" data-approach="crd">
                                 <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                                 </div>
                                 <div class="comparison">
                                     <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -642,20 +704,17 @@ spec:
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>nginx.ingress.kubernetes.io/proxy-request-buffering</code></td>
-                            <td><span class="badge badge-configmap">ConfigMap</span> <code>proxy-request-buffering</code></td>
+                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/location-snippets</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
   nginx.ingress.kubernetes.io/proxy-request-buffering: "off"</code></pre></div>
-                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Set via ConfigMap
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: nginx-config
-data:
-  proxy-request-buffering: "off"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/location-snippets: |
+    proxy_request_buffering off;</code></pre></div>
                             </div>
+                            <div class="info-box note"><strong>Note:</strong> The Official controller does not have a dedicated <code>proxy-request-buffering</code> annotation or ConfigMap key. Use <code>location-snippets</code> to set the <code>proxy_request_buffering</code> directive.</div>
                         </div></td></tr>
                     </tbody>
                 </table>
@@ -672,7 +731,7 @@ data:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># Canary Ingress
@@ -839,7 +898,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -891,7 +950,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -942,7 +1001,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -998,7 +1057,7 @@ spec:
                                 <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
   nginx.org/lb-method: "least_conn"</code></pre></div>
                             </div>
-                            <div class="info-box note"><strong>Note:</strong> Supported methods differ. Official supports: <code>round_robin</code>, <code>least_conn</code>, <code>ip_hash</code>, <code>hash</code>, <code>random</code>.</div>
+                            <div class="info-box note"><strong>Note:</strong> Supported methods differ. Official supports: <code>round_robin</code>, <code>least_conn</code>, <code>ip_hash</code>, <code>hash</code>, <code>random</code>. The Official controller's default is <code>random two least_conn</code> (not <code>round_robin</code>), so load balancing behavior may change even without explicit configuration.</div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>nginx.ingress.kubernetes.io/service-upstream</code></td>
@@ -1018,7 +1077,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1048,7 +1107,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1066,6 +1125,26 @@ spec:
     verifyDepth: 2</code></pre></div>
                             </div>
                         </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>nginx.ingress.kubernetes.io/auth-tls-match-cn</code></td>
+                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/location-snippets</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/auth-tls-secret: "ns/ca-secret"
+  nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+  nginx.ingress.kubernetes.io/auth-tls-match-cn: "CN=client-[0-9]+"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Use ingressMTLS Policy for basic mTLS, then add
+# snippet for CN validation:
+annotations:
+  nginx.org/location-snippets: |
+    if ($ssl_client_s_dn !~ "CN=client-[0-9]+") {
+        return 403;
+    }</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> The Official controller's <code>ingressMTLS</code> Policy does not have a built-in CN matching feature. Use <code>location-snippets</code> to add custom CN validation logic.</div>
+                        </div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1076,12 +1155,12 @@ spec:
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><div class="annotation-list"><code>nginx.ingress.kubernetes.io/proxy-ssl-ciphers</code><code>nginx.ingress.kubernetes.io/proxy-ssl-protocols</code><code>nginx.ingress.kubernetes.io/proxy-ssl-secret</code><code>nginx.ingress.kubernetes.io/proxy-ssl-server-name</code><code>nginx.ingress.kubernetes.io/proxy-ssl-verify</code><code>nginx.ingress.kubernetes.io/proxy-ssl-verify-depth</code></div></td>
+                            <td><div class="annotation-list"><code>nginx.ingress.kubernetes.io/proxy-ssl-ciphers</code><code>nginx.ingress.kubernetes.io/proxy-ssl-name</code><code>nginx.ingress.kubernetes.io/proxy-ssl-protocols</code><code>nginx.ingress.kubernetes.io/proxy-ssl-secret</code><code>nginx.ingress.kubernetes.io/proxy-ssl-server-name</code><code>nginx.ingress.kubernetes.io/proxy-ssl-verify</code><code>nginx.ingress.kubernetes.io/proxy-ssl-verify-depth</code></div></td>
                             <td><span class="badge badge-policy">Policy CRD</span> <code>egressMTLS</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1127,42 +1206,63 @@ data:
                             </div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>nginx.ingress.kubernetes.io/enable-rewrite-log</code></td>
+                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/location-snippets</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/enable-rewrite-log: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/location-snippets: |
+    rewrite_log on;</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> The Official controller does not have a dedicated <code>rewrite-log</code> ConfigMap key. Use <code>location-snippets</code> to enable the <code>rewrite_log</code> directive. Rewrite logging outputs to the error log at <code>notice</code> level.</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>nginx.ingress.kubernetes.io/enable-opentelemetry</code></td>
-                            <td><span class="badge badge-configmap">ConfigMap</span> OpenTelemetry settings</td>
+                            <td><span class="badge badge-configmap">ConfigMap</span> <code>otel-*</code> keys</td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
   nginx.ingress.kubernetes.io/enable-opentelemetry: "true"</code></pre></div>
-                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Enable via ConfigMap and CLI args
-# See docs.nginx.com for OpenTelemetry setup</code></pre></div>
-                            </div>
-                        </div></td></tr>
-                        <tr class="expandable" onclick="toggleRow(this)">
-                            <td><code>nginx.ingress.kubernetes.io/http2-push-preload</code></td>
-                            <td><span class="badge badge-configmap">ConfigMap</span> <code>http2-push-preload</code></td>
-                        </tr>
-                        <tr class="example-row"><td colspan="2"><div class="example-content">
-                            <div class="comparison">
-                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
-  nginx.ingress.kubernetes.io/http2-push-preload: "true"</code></pre></div>
                                 <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Set via ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: nginx-config
 data:
-  http2-push-preload: "true"</code></pre></div>
+  otel-exporter-endpoint: "otel-collector:4317"
+  otel-trace-in-http: "true"
+  otel-service-name: "nginx-ingress"</code></pre></div>
                             </div>
+                            <div class="info-box note"><strong>Note:</strong> The Official controller uses <code>otel-exporter-endpoint</code>, <code>otel-trace-in-http</code>, <code>otel-service-name</code>, <code>otel-exporter-header-name</code>, and <code>otel-exporter-header-value</code> ConfigMap keys for OpenTelemetry. Set <code>otel-trace-in-http: "false"</code> to enable tracing for individual routes via snippets.</div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><code>nginx.ingress.kubernetes.io/mirror-target</code></td>
+                            <td><code>nginx.ingress.kubernetes.io/http2-push-preload</code></td>
+                            <td>Not supported</td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/http2-push-preload: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Not supported — HTTP/2 Server Push was deprecated
+# by major browsers and removed from NGINX 1.25.1.
+# No migration action needed.</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> HTTP/2 Server Push (<code>http2_push_preload</code>) was removed from NGINX in version 1.25.1 after major browsers deprecated the feature. This annotation can be safely removed during migration.</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><div class="annotation-list"><code>nginx.ingress.kubernetes.io/mirror-target</code><code>nginx.ingress.kubernetes.io/mirror-request-body</code><code>nginx.ingress.kubernetes.io/mirror-host</code></div></td>
                             <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/location-snippets</code> with <code>mirror</code> directive</td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
-  nginx.ingress.kubernetes.io/mirror-target: "https://mirror.example.com$request_uri"</code></pre></div>
+  nginx.ingress.kubernetes.io/mirror-target: "https://mirror.example.com$request_uri"
+  nginx.ingress.kubernetes.io/mirror-request-body: "on"
+  nginx.ingress.kubernetes.io/mirror-host: "mirror.example.com"</code></pre></div>
                                 <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
   nginx.org/location-snippets: |
     mirror /mirror;
@@ -1170,26 +1270,24 @@ data:
   nginx.org/server-snippets: |
     location /mirror {
       internal;
+      proxy_set_header Host mirror.example.com;
       proxy_pass https://mirror.example.com$request_uri;
     }</code></pre></div>
                             </div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>nginx.ingress.kubernetes.io/proxy-http-version</code></td>
-                            <td><span class="badge badge-configmap">ConfigMap</span> <code>proxy-protocol</code></td>
+                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/location-snippets</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
   nginx.ingress.kubernetes.io/proxy-http-version: "1.1"</code></pre></div>
-                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Configured via ConfigMap
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: nginx-config
-data:
-  proxy-protocol: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/location-snippets: |
+    proxy_http_version 1.1;</code></pre></div>
                             </div>
+                            <div class="info-box note"><strong>Note:</strong> The Official controller does not have a dedicated annotation for HTTP version. Use <code>location-snippets</code> to set <code>proxy_http_version</code> directly.</div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>nginx.ingress.kubernetes.io/server-alias</code></td>
@@ -1213,32 +1311,100 @@ spec:
                             </div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><code>nginx.ingress.kubernetes.io/server-tokens</code></td>
+                            <td><em>N/A (ConfigMap only)</em></td>
                             <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/server-tokens</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="comparison">
-                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
-  nginx.ingress.kubernetes.io/server-tokens: "false"</code></pre></div>
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># ConfigMap setting only
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+data:
+  server-tokens: "false"</code></pre></div>
                                 <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
   nginx.org/server-tokens: "false"</code></pre></div>
                             </div>
+                            <div class="info-box note"><strong>Note:</strong> The Community controller configures server tokens via ConfigMap only. The Official controller provides a per-Ingress annotation.</div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><code>nginx.ingress.kubernetes.io/websocket-services</code></td>
+                            <td><em>N/A (automatic with HTTP/1.1)</em></td>
                             <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/websocket-services</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="comparison">
-                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
-  nginx.ingress.kubernetes.io/websocket-services: "ws-service"</code></pre></div>
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># WebSocket support is automatic
+# Just ensure proxy-http-version: "1.1"
+# and proper Upgrade/Connection headers</code></pre></div>
                                 <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
   nginx.org/websocket-services: "ws-service"</code></pre></div>
                             </div>
+                            <div class="info-box note"><strong>Note:</strong> The Community controller handles WebSocket upgrades automatically. The Official controller provides an explicit annotation to enable WebSocket support for specific services.</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)"><td><em>N/A</em></td><td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/listen-ports</code> / <code>nginx.org/listen-ports-ssl</code></td></tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># No direct equivalent
+# Port configuration is handled at the
+# controller/service level</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/listen-ports: "8080,8443"
+  nginx.org/listen-ports-ssl: "8443,9443"</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> These annotations configure custom HTTP and HTTPS listen ports for the Ingress resource. Useful when the controller needs to listen on non-standard ports.</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)"><td><em>N/A</em></td><td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/mergeable-ingress-type</code></td></tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># No direct equivalent
+# Canary/traffic-splitting uses separate
+# canary annotations</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code># Master Ingress (server-level config)
+annotations:
+  nginx.org/mergeable-ingress-type: "master"
+---
+# Minion Ingress (route-level config)
+annotations:
+  nginx.org/mergeable-ingress-type: "minion"</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> Mergeable Ingress types allow splitting configuration across multiple Ingress resources for the same host. The <code>master</code> handles server-level settings while <code>minion</code> resources define individual routes.</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)"><td><em>N/A</em></td><td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/proxy-set-headers</code></td></tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># Custom headers set via ConfigMap
+# proxy-set-headers in controller ConfigMap</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/proxy-set-headers: "my-custom-headers"
+---
+# ConfigMap with custom headers
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-custom-headers
+data:
+  X-Custom-Header: "my-value"
+  X-Forwarded-Proto: "$scheme"</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> References a ConfigMap containing header key-value pairs that will be added to proxied requests. The annotation value is the ConfigMap name.</div>
+                        </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)"><td><em>N/A</em></td><td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/http-redirect-code</code></td></tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># No direct equivalent
+# Redirect code is not configurable
+# per Ingress resource</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/redirect-to-https: "True"
+  nginx.org/http-redirect-code: "308"</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> Customizes the HTTP redirect status code used when redirecting to HTTPS (default: 301). Common values: 301 (permanent), 302 (temporary), 307 (temporary, preserves method), 308 (permanent, preserves method).</div>
                         </div></td></tr>
                     </tbody>
                 </table>
             </div>
+            <div class="info-box note"><strong>Note:</strong> <code>nginx.org/listen-ports</code> and <code>nginx.org/listen-ports-ssl</code> configure custom HTTP/HTTPS ports. <code>nginx.org/mergeable-ingress-type</code> enables master/minion Ingress merging for shared server-level config. <code>nginx.org/proxy-set-headers</code> sets custom proxy headers. <code>nginx.org/http-redirect-code</code> customizes the HTTP redirect status code (default: 301).</div>
 
             <!-- Proxy Settings -->
             <h3 id="proxy-settings">Proxy Settings</h3>
@@ -1251,7 +1417,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1298,10 +1464,11 @@ spec:
   nginx.org/limit-req-burst: "50"
   nginx.org/limit-req-delay: "5"</code></pre></div>
                                 </div>
+                                <div class="info-box note"><strong>Additional rate limiting annotations:</strong> <code>nginx.org/limit-req-key</code> (default: <code>${binary_remote_addr}</code>), <code>nginx.org/limit-req-zone-size</code>, <code>nginx.org/limit-req-no-delay</code>, <code>nginx.org/limit-req-dry-run</code>, <code>nginx.org/limit-req-log-level</code>, <code>nginx.org/limit-req-reject-code</code> (default: 429), <code>nginx.org/limit-req-scale</code> (divides rate by pod count for consistency during autoscaling).</div>
                             </div>
                             <div class="approach-content" data-approach="crd">
                                 <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                                 </div>
                                 <div class="comparison">
                                     <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1331,12 +1498,12 @@ spec:
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><div class="annotation-list"><code>nginx.ingress.kubernetes.io/from-to-www-redirect</code><code>nginx.ingress.kubernetes.io/permanent-redirect</code><code>nginx.ingress.kubernetes.io/permanent-redirect-code</code><code>nginx.ingress.kubernetes.io/temporal-redirect</code></div></td>
+                            <td><div class="annotation-list"><code>nginx.ingress.kubernetes.io/from-to-www-redirect</code><code>nginx.ingress.kubernetes.io/permanent-redirect</code><code>nginx.ingress.kubernetes.io/permanent-redirect-code</code><code>nginx.ingress.kubernetes.io/temporal-redirect</code><code>nginx.ingress.kubernetes.io/temporal-redirect-code</code></div></td>
                             <td><span class="badge badge-virtualserver">VirtualServer CRD</span> <code>action.redirect</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1365,7 +1532,7 @@ spec:
                     <tbody>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><div class="annotation-list"><code>nginx.ingress.kubernetes.io/app-root</code><code>nginx.ingress.kubernetes.io/rewrite-target</code><code>nginx.ingress.kubernetes.io/use-regex</code></div></td>
-                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/rewrites</code> or <span class="badge badge-virtualserver">VirtualServer CRD</span> <code>rewritePath</code></td>
+                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/rewrites</code>, <code>nginx.org/rewrite-target</code>, or <code>nginx.org/app-root</code>; or <span class="badge badge-virtualserver">VirtualServer CRD</span> <code>rewritePath</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="approach-tabs">
@@ -1385,7 +1552,7 @@ spec:
                             </div>
                             <div class="approach-content" data-approach="crd">
                                 <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                    <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                                 </div>
                                 <div class="comparison">
                                     <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1418,6 +1585,22 @@ spec:
     proxy_redirect http://internal/ https://external/;</code></pre></div>
                             </div>
                         </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><div class="annotation-list"><code>nginx.ingress.kubernetes.io/proxy-cookie-domain</code><code>nginx.ingress.kubernetes.io/proxy-cookie-path</code></div></td>
+                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/location-snippets</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/proxy-cookie-domain: "internal.example.com external.example.com"
+  nginx.ingress.kubernetes.io/proxy-cookie-path: "/internal/ /external/"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/location-snippets: |
+    proxy_cookie_domain internal.example.com external.example.com;
+    proxy_cookie_path /internal/ /external/;</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> The Official controller does not have dedicated annotations for proxy cookie rewriting. Use <code>location-snippets</code> to configure <code>proxy_cookie_domain</code> and <code>proxy_cookie_path</code> directives.</div>
+                        </div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1434,8 +1617,7 @@ spec:
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box">
                                 <h6>Install Required CRDs <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml
-kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualserverroutes.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="info-box note"><strong>Note:</strong> The community controller has no equivalent for cross-namespace route delegation. VirtualServerRoute allows different teams to manage their own routing rules while a central VirtualServer controls the domain.</div>
                             <div class="comparison">
@@ -1507,6 +1689,7 @@ spec:
                                 <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
   nginx.org/redirect-to-https: "true"</code></pre></div>
                             </div>
+                            <div class="info-box note"><strong>Note:</strong> <code>force-ssl-redirect</code> in the Community controller forces HTTPS redirect even without a TLS certificate. Use <code>nginx.org/redirect-to-https</code> for similar behavior.</div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>nginx.ingress.kubernetes.io/ssl-ciphers</code></td>
@@ -1534,15 +1717,25 @@ spec:
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>nginx.ingress.kubernetes.io/ssl-redirect</code></td>
-                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/redirect-to-https</code></td>
+                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/redirect-to-https</code> or <code>nginx.org/ssl-redirect</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
   nginx.ingress.kubernetes.io/ssl-redirect: "true"</code></pre></div>
                                 <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
-  nginx.org/redirect-to-https: "true"</code></pre></div>
+  # Option 1: For TLS terminated at load balancer
+  nginx.org/redirect-to-https: "true"
+  # OR Option 2: For unconditional redirect
+  nginx.org/ssl-redirect: "true"</code></pre></div>
                             </div>
+                            <div class="info-box tip"><strong>Important distinction:</strong>
+                                <ul style="margin: 8px 0 0 20px;">
+                                    <li><code>nginx.org/redirect-to-https</code> checks the <code>X-Forwarded-Proto</code> header before redirecting. Use this when TLS terminates at a load balancer in front of NGINX.</li>
+                                    <li><code>nginx.org/ssl-redirect</code> performs an unconditional redirect for all HTTP traffic. Use this when NGINX handles TLS termination directly.</li>
+                                </ul>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> The legacy annotation <code>ingress.kubernetes.io/ssl-redirect</code> is deprecated and will be removed in a future release. Use <code>nginx.org/ssl-redirect</code> instead.</div>
                         </div></td></tr>
                         <tr class="expandable" onclick="toggleRow(this)">
                             <td><code>nginx.ingress.kubernetes.io/ssl-passthrough</code></td>
@@ -1550,8 +1743,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install TransportServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_transportservers.yaml
-kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_globalconfigurations.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1580,6 +1772,22 @@ spec:
     pass: backend</code></pre></div>
                             </div>
                         </div></td></tr>
+                        <tr class="expandable" onclick="toggleRow(this)">
+                            <td><code>nginx.ingress.kubernetes.io/preserve-trailing-slash</code></td>
+                            <td><span class="badge badge-annotation">Annotation</span> <code>nginx.org/location-snippets</code></td>
+                        </tr>
+                        <tr class="example-row"><td colspan="2"><div class="example-content">
+                            <div class="comparison">
+                                <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
+  nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+  nginx.ingress.kubernetes.io/ssl-redirect: "true"</code></pre></div>
+                                <div class="comparison-block new"><h5>Official NGINX Ingress</h5><pre><code>annotations:
+  nginx.org/redirect-to-https: "true"
+  nginx.org/location-snippets: |
+    # Trailing slash is preserved by default in redirects</code></pre></div>
+                            </div>
+                            <div class="info-box note"><strong>Note:</strong> This annotation affects SSL redirect behavior in the Community controller. The Official controller preserves trailing slashes by default in its redirect logic.</div>
+                        </div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1595,8 +1803,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install TransportServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_transportservers.yaml
-kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_globalconfigurations.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># ConfigMap for TCP services
@@ -1696,8 +1903,15 @@ spec:
 
         <!-- Plus Mappings -->
         <section id="plus-mappings">
-            <h2 id="plus-mappings">NGINX Plus Mappings</h2>
+            <h2 id="plus-mappings-heading">NGINX Plus Mappings</h2>
             <p>These features require an NGINX Plus subscription and provide enterprise-grade capabilities. Most Plus features use CRD-based configuration—click the expandable rows <span style="color: var(--primary-color);">▶</span> to see full examples.</p>
+
+            <div class="controls">
+                <input type="text" id="searchInputPlus" placeholder="Search annotations..." onkeyup="filterTable('plus')" aria-label="Search Plus annotations">
+                <span id="searchCountPlus" class="search-count" aria-live="polite"></span>
+                <button class="btn btn-primary" onclick="expandAllExamples(this)">Expand All</button>
+                <button class="btn btn-secondary" onclick="collapseAllExamples(this)">Collapse All</button>
+            </div>
 
             <div class="legend">
                 <div class="legend-item"><span class="badge badge-plus">Plus Required</span></div>
@@ -1713,12 +1927,12 @@ spec:
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><code>No direct equivalent</code></td>
+                            <td><em>No direct equivalent</em></td>
                             <td><span class="badge badge-policy">Policy CRD</span> <span class="badge badge-plus">Plus</span> <code>apiKey</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># No direct equivalent
@@ -1753,12 +1967,12 @@ spec:
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><div class="annotation-list"><code>No direct equivalent</code><em>(passive only)</em></div></td>
+                            <td><div class="annotation-list"><em>No direct equivalent</em><em>(passive only)</em></div></td>
                             <td><span class="badge badge-virtualserver">VirtualServer CRD</span> <span class="badge badge-plus">Plus</span> <code>upstreams[].healthCheck</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># No active health check equivalent
@@ -1794,12 +2008,12 @@ spec:
                 <table class="mapping-table"><thead><tr><th>Kubernetes NGINX Ingress</th><th>Official NGINX Ingress</th></tr></thead>
                     <tbody>
                         <tr class="expandable" onclick="toggleRow(this)">
-                            <td><code>No direct equivalent</code></td>
+                            <td><em>No direct equivalent</em></td>
                             <td><span class="badge badge-policy">Policy CRD</span> <span class="badge badge-plus">Plus</span> <code>jwt</code></td>
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code># No direct equivalent
@@ -1815,6 +2029,7 @@ spec:
     token: "$http_authorization"
     keyCache: 1h</code></pre></div>
                             </div>
+                            <div class="info-box note"><strong>Note:</strong> JWT can also be configured via annotations: <code>nginx.com/jwt-key</code>, <code>nginx.com/jwt-realm</code>, <code>nginx.com/jwt-token</code>, <code>nginx.com/jwt-login-url</code>. The Policy CRD approach is recommended for new deployments.</div>
                         </div></td></tr>
                     </tbody>
                 </table>
@@ -1831,7 +2046,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1859,7 +2074,7 @@ spec:
     jwksURI: "https://idp.example.com/.well-known/jwks.json"
     scope: "openid+profile+email"</code></pre></div>
                             </div>
-                            <div class="info-box note"><strong>Note:</strong> Native OIDC support eliminates the need for oauth2-proxy sidecar.</div>
+                            <div class="info-box note"><strong>Note:</strong> Native OIDC support eliminates the need for oauth2-proxy sidecar. The community <code>auth-url</code>/<code>auth-signin</code> pattern uses the <code>auth_request</code> module (typically with oauth2-proxy) and supports any external auth service, not just OIDC. If you need generic external auth (non-OIDC), use <code>nginx.org/location-snippets</code> with the <code>auth_request</code> directive.</div>
                         </div></td></tr>
                     </tbody>
                 </table>
@@ -1876,7 +2091,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install VirtualServer CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1902,6 +2117,7 @@ spec:
         httpOnly: true
         samesite: strict</code></pre></div>
                             </div>
+                            <div class="info-box note"><strong>Note:</strong> Session persistence can also be configured via the <code>nginx.com/sticky-cookie-services</code> annotation for simpler use cases. The VirtualServer CRD <code>sessionCookie</code> approach provides more granular control.</div>
                         </div></td></tr>
                     </tbody>
                 </table>
@@ -1918,7 +2134,7 @@ spec:
                         </tr>
                         <tr class="example-row"><td colspan="2"><div class="example-content">
                             <div class="install-box"><h6>Install Policy CRD <button class="copy-btn" onclick="copyInstall(this, event)">Copy</button></h6>
-                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml</code></pre>
+                                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
                             </div>
                             <div class="comparison">
                                 <div class="comparison-block old"><h5>Kubernetes NGINX Ingress</h5><pre><code>annotations:
@@ -1937,7 +2153,7 @@ spec:
         apLogConf: "default/log-config"
         logDest: "syslog:server=syslog:514"</code></pre></div>
                             </div>
-                            <div class="info-box note"><strong>Note:</strong> NGINX App Protect (NAP) provides enterprise WAF capabilities beyond ModSecurity.</div>
+                            <div class="info-box note"><strong>Note:</strong> NGINX App Protect (NAP) provides enterprise WAF capabilities beyond ModSecurity. WAF can also be configured via annotations: <code>appprotect.f5.com/app-protect-enable</code>, <code>appprotect.f5.com/app-protect-policy</code>, <code>appprotect.f5.com/app-protect-security-log-enable</code>, <code>appprotect.f5.com/app-protect-security-log</code>, and <code>appprotect.f5.com/app-protect-security-log-destination</code>.</div>
                         </div></td></tr>
                     </tbody>
                 </table>
@@ -2018,20 +2234,10 @@ spec:
         <section id="installation">
             <h2 id="installing-crds">Installing CRDs</h2>
             <div class="install-box"><h6>Install All CRDs</h6>
-                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds.yaml</code></pre>
+                <pre><code>kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml</code></pre>
             </div>
-            <h3 id="install-individually">Or Install Individually</h3>
-            <pre><code># VirtualServer and VirtualServerRoute
-kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml
-kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualserverroutes.yaml
-
-# Policy
-kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml
-
-# TransportServer and GlobalConfiguration
-kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_transportservers.yaml
-kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_globalconfigurations.yaml</code></pre>
-            <div class="info-box note"><strong>Note:</strong> Replace <code>v3.4.0</code> with your controller version.</div>
+            <div class="info-box note"><strong>Note:</strong> The <code>crds.yaml</code> file contains all CRDs (VirtualServer, VirtualServerRoute, Policy, TransportServer, GlobalConfiguration) in a single manifest. Individual CRD files are not provided separately.</div>
+            <div class="info-box note"><strong>Note:</strong> Replace <code>v5.3.2</code> with your controller version.</div>
         </section>
 
         <!-- Checklist -->
@@ -2057,12 +2263,12 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
         <section id="resources">
             <h2 id="additional-resources">Additional Resources</h2>
             <ul>
-                <li><a href="https://docs.nginx.com/nginx-ingress-controller/" target="_blank">Official Documentation</a></li>
-                <li><a href="https://docs.nginx.com/nginx-ingress-controller/configuration/virtualserver-and-virtualserverroute-resources/" target="_blank">VirtualServer Reference</a></li>
-                <li><a href="https://docs.nginx.com/nginx-ingress-controller/configuration/policy-resource/" target="_blank">Policy Reference</a></li>
-                <li><a href="https://docs.nginx.com/nginx-ingress-controller/configuration/transportserver-resource/" target="_blank">TransportServer Reference</a></li>
-                <li><a href="https://github.com/nginx/kubernetes-ingress" target="_blank">GitHub Repository</a></li>
-                <li><a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank">Contribute to This Guide</a></li>
+                <li><a href="https://docs.nginx.com/nginx-ingress-controller/" target="_blank" rel="noopener noreferrer">Official Documentation</a></li>
+                <li><a href="https://docs.nginx.com/nginx-ingress-controller/configuration/virtualserver-and-virtualserverroute-resources/" target="_blank" rel="noopener noreferrer">VirtualServer Reference</a></li>
+                <li><a href="https://docs.nginx.com/nginx-ingress-controller/configuration/policy-resource/" target="_blank" rel="noopener noreferrer">Policy Reference</a></li>
+                <li><a href="https://docs.nginx.com/nginx-ingress-controller/configuration/transportserver-resource/" target="_blank" rel="noopener noreferrer">TransportServer Reference</a></li>
+                <li><a href="https://github.com/nginx/kubernetes-ingress" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                <li><a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank" rel="noopener noreferrer">Contribute to This Guide</a></li>
             </ul>
         </section>
     </main>
@@ -2070,7 +2276,7 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
     <footer>
         <div class="container">
             <p>NGINX Ingress Migration Guide</p>
-            <p><a href="https://github.com/nginx/kubernetes-ingress" target="_blank">Official NGINX Ingress on GitHub</a> · <a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank">Contribute to This Guide</a></p>
+            <p><a href="https://github.com/nginx/kubernetes-ingress" target="_blank" rel="noopener noreferrer">Official NGINX Ingress on GitHub</a> · <a href="https://github.com/alessfg/nginx-ingress-migration-guide" target="_blank" rel="noopener noreferrer">Contribute to This Guide</a></p>
         </div>
     </footer>
 
@@ -2080,24 +2286,98 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
             if (exampleRow && exampleRow.classList.contains('example-row')) {
                 row.classList.toggle('expanded');
                 exampleRow.classList.toggle('visible');
+                var isExpanded = row.classList.contains('expanded');
+                row.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
             }
         }
-        function expandAllExamples() {
-            document.querySelectorAll('.expandable').forEach(row => {
+
+        // Add keyboard accessibility to expandable rows and approach tabs
+        document.addEventListener('DOMContentLoaded', function() {
+            // Expandable rows
+            document.querySelectorAll('.expandable').forEach(function(row) {
+                row.setAttribute('tabindex', '0');
+                row.setAttribute('role', 'button');
+                row.setAttribute('aria-expanded', 'false');
+                row.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleRow(this);
+                    }
+                });
+            });
+
+            // Approach tabs ARIA enhancement with arrow key navigation
+            document.querySelectorAll('.approach-tabs').forEach(function(tabList, i) {
+                tabList.setAttribute('role', 'tablist');
+                var tabs = tabList.querySelectorAll('.approach-tab');
+                tabs.forEach(function(tab) {
+                    var type = tab.textContent.toLowerCase().includes('annotation') ? 'annotation' : 'crd';
+                    var panelId = 'panel-' + i + '-' + type;
+                    tab.setAttribute('role', 'tab');
+                    tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
+                    tab.setAttribute('aria-controls', panelId);
+                    tab.id = 'tab-' + i + '-' + type;
+                });
+                // Arrow key navigation per WAI-ARIA tabs pattern
+                tabList.addEventListener('keydown', function(e) {
+                    var tabsArr = Array.from(tabs);
+                    var idx = tabsArr.indexOf(document.activeElement);
+                    if (idx < 0) return;
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        var next = tabsArr[(idx + 1) % tabsArr.length];
+                        next.focus();
+                        next.click();
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        var prev = tabsArr[(idx - 1 + tabsArr.length) % tabsArr.length];
+                        prev.focus();
+                        prev.click();
+                    }
+                });
+                var container = tabList.closest('.example-content');
+                if (container) {
+                    container.querySelectorAll('.approach-content').forEach(function(panel) {
+                        var type = panel.getAttribute('data-approach');
+                        panel.setAttribute('role', 'tabpanel');
+                        panel.id = 'panel-' + i + '-' + type;
+                        panel.setAttribute('aria-labelledby', 'tab-' + i + '-' + type);
+                        panel.setAttribute('aria-hidden', panel.classList.contains('active') ? 'false' : 'true');
+                    });
+                }
+            });
+        });
+        function expandAllExamples(btn) {
+            var scope = btn ? btn.closest('section') : document;
+            if (!scope) scope = document;
+            scope.querySelectorAll('.expandable').forEach(row => {
                 row.classList.add('expanded');
                 const exampleRow = row.nextElementSibling;
                 if (exampleRow && exampleRow.classList.contains('example-row')) exampleRow.classList.add('visible');
             });
         }
-        function collapseAllExamples() {
-            document.querySelectorAll('.expandable').forEach(row => {
+        function collapseAllExamples(btn) {
+            var scope = btn ? btn.closest('section') : document;
+            if (!scope) scope = document;
+            scope.querySelectorAll('.expandable').forEach(row => {
                 row.classList.remove('expanded');
                 const exampleRow = row.nextElementSibling;
                 if (exampleRow && exampleRow.classList.contains('example-row')) exampleRow.classList.remove('visible');
             });
         }
-        function filterTable() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
+        var _savedExpanded = [];
+        function filterTable(source) {
+            var ossInput = document.getElementById('searchInput');
+            var plusInput = document.getElementById('searchInputPlus');
+            if (source === 'plus' && plusInput) { ossInput.value = plusInput.value; }
+            else if (plusInput) { plusInput.value = ossInput.value; }
+            const term = ossInput.value.toLowerCase();
+            // Save expanded state when search begins
+            if (term && _savedExpanded.length === 0) {
+                document.querySelectorAll('.expandable.expanded').forEach(function(r) { _savedExpanded.push(r); });
+            }
+            var totalVisible = 0;
+            var totalRows = 0;
             document.querySelectorAll('.mapping-table').forEach(table => {
                 let visibleCount = 0;
                 table.querySelectorAll('tbody tr').forEach(row => {
@@ -2105,10 +2385,12 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                         if (term) { row.classList.remove('visible'); row.previousElementSibling?.classList.remove('expanded'); }
                         return;
                     }
+                    totalRows++;
                     const match = !term || row.textContent.toLowerCase().includes(term);
                     row.style.display = match ? '' : 'none';
                     if (match) visibleCount++;
                 });
+                totalVisible += visibleCount;
                 const wrapper = table.closest('.table-wrapper');
                 if (!wrapper) return;
                 const h3 = wrapper.previousElementSibling;
@@ -2118,22 +2400,73 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                 if (h3 && h3.tagName === 'H3') h3.style.display = hidden ? 'none' : '';
                 if (infoBox && infoBox.classList.contains('info-box')) infoBox.style.display = hidden ? 'none' : '';
             });
+            // Update result count displays
+            var countText = '';
+            var noResults = false;
+            if (term) {
+                countText = totalVisible + ' of ' + totalRows + ' rows';
+                noResults = totalVisible === 0;
+            }
+            var countEl = document.getElementById('searchCount');
+            var countElPlus = document.getElementById('searchCountPlus');
+            if (countEl) { countEl.textContent = countText; countEl.className = 'search-count' + (noResults ? ' no-results' : ''); }
+            if (countElPlus) { countElPlus.textContent = countText; countElPlus.className = 'search-count' + (noResults ? ' no-results' : ''); }
+            // Restore expanded state when search is cleared
+            if (!term && _savedExpanded.length > 0) {
+                _savedExpanded.forEach(function(r) {
+                    r.classList.add('expanded');
+                    var ex = r.nextElementSibling;
+                    if (ex && ex.classList.contains('example-row')) ex.classList.add('visible');
+                });
+                _savedExpanded = [];
+            }
         }
         function switchApproach(btn, type) {
             const container = btn.closest('.example-content');
-            container.querySelectorAll('.approach-tab').forEach(t => t.classList.remove('active'));
-            container.querySelectorAll('.approach-content').forEach(c => c.classList.remove('active'));
+            container.querySelectorAll('.approach-tab').forEach(function(t) {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            container.querySelectorAll('.approach-content').forEach(function(c) {
+                c.classList.remove('active');
+                c.setAttribute('aria-hidden', 'true');
+            });
             btn.classList.add('active');
-            container.querySelector('.approach-content[data-approach="' + type + '"]').classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+            var panel = container.querySelector('.approach-content[data-approach="' + type + '"]');
+            panel.classList.add('active');
+            panel.setAttribute('aria-hidden', 'false');
         }
         function copyInstall(btn, e) {
             e.stopPropagation();
             const code = btn.parentElement.nextElementSibling.textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                btn.textContent = 'Copied!';
-                btn.classList.add('copied');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(() => {
+                    btn.textContent = 'Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+                }).catch(() => {
+                    btn.textContent = 'Failed';
+                    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+                });
+            } else {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    btn.textContent = 'Copied!';
+                    btn.classList.add('copied');
+                } catch (err) {
+                    btn.textContent = 'Failed';
+                }
+                document.body.removeChild(textarea);
                 setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-            });
+            }
         }
         document.querySelectorAll('nav a').forEach(a => {
             a.addEventListener('click', e => {
@@ -2163,12 +2496,12 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
         const ANNOTATION_MAPPINGS = [
             // Access Control
             { community: ["denylist-source-range", "whitelist-source-range"], official: "Policy CRD accessControl", type: "policy", category: "Access Control", anchor: "access-control", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml", templateFn: "generateAccessControlPolicy" } },
+              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateAccessControlPolicy" } },
             { community: ["satisfy"], official: "Annotation nginx.org/location-snippets (satisfy directive)", type: "annotation", category: "Access Control", anchor: "access-control", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "satisfy": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "satisfy ${value};" } } } },
             // Authentication (Basic)
             { community: ["auth-realm", "auth-secret", "auth-secret-type", "auth-type"], official: "Annotation nginx.org/basic-auth-* or Policy CRD basicAuth", type: "policy", category: "Authentication (Basic)", anchor: "authentication-basic", section: "oss", dualApproach: true, plusRequired: false,
-              officialMapping: { annotations: { "auth-secret": { key: "nginx.org/basic-auth-secret", transform: "direct" }, "auth-realm": { key: "nginx.org/basic-auth-realm", transform: "direct" } }, crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml", templateFn: "generateBasicAuthPolicy" } },
+              officialMapping: { annotations: { "auth-secret": { key: "nginx.org/basic-auth-secret", transform: "direct" }, "auth-realm": { key: "nginx.org/basic-auth-realm", transform: "direct" } }, crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateBasicAuthPolicy" } },
             // Buffering
             { community: ["client-body-buffer-size"], official: "Annotation nginx.org/client-body-buffer-size", type: "annotation", category: "Buffering", anchor: "buffering", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "client-body-buffer-size": { key: "nginx.org/client-body-buffer-size", transform: "direct" } } } },
@@ -2184,82 +2517,84 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
               officialMapping: { annotations: { "proxy-busy-buffers-size": { key: "nginx.org/proxy-busy-buffers-size", transform: "direct" } } } },
             { community: ["proxy-max-temp-file-size"], official: "Annotation nginx.org/proxy-max-temp-file-size", type: "annotation", category: "Buffering", anchor: "buffering", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "proxy-max-temp-file-size": { key: "nginx.org/proxy-max-temp-file-size", transform: "direct" } } } },
-            { community: ["proxy-request-buffering"], official: "ConfigMap proxy-request-buffering", type: "configmap", category: "Buffering", anchor: "buffering", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { configMap: { "proxy-request-buffering": { key: "proxy-request-buffering", transform: "direct" } } } },
+            { community: ["proxy-request-buffering"], official: "Annotation nginx.org/location-snippets (proxy_request_buffering directive)", type: "annotation", category: "Buffering", anchor: "buffering", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { annotations: { "proxy-request-buffering": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "proxy_request_buffering ${value};" } } } },
             // Canary / Traffic Splitting
             { community: ["canary", "canary-by-cookie", "canary-by-header", "canary-by-header-pattern", "canary-by-header-value", "canary-weight", "canary-weight-total"], official: "VirtualServer CRD splits[]/matches[]", type: "virtualserver", category: "Canary / Traffic Splitting", anchor: "canary-traffic-splitting", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateCanaryVirtualServer" } },
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateCanaryVirtualServer" } },
             // Configuration Snippets
             { community: ["configuration-snippet"], official: "Annotation nginx.org/location-snippets", type: "annotation", category: "Configuration Snippets", anchor: "configuration-snippets", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "configuration-snippet": { key: "nginx.org/location-snippets", transform: "direct" } } } },
             { community: ["server-snippet"], official: "Annotation nginx.org/server-snippets", type: "annotation", category: "Configuration Snippets", anchor: "configuration-snippets", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "server-snippet": { key: "nginx.org/server-snippets", transform: "direct" } } } },
             { community: ["stream-snippet"], official: "TransportServer CRD or GlobalConfiguration", type: "transportserver", category: "Configuration Snippets", anchor: "configuration-snippets", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "TransportServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_transportservers.yaml", templateFn: "generateStreamSnippetTS" } },
+              officialMapping: { crdKind: "TransportServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateStreamSnippetTS" } },
             // CORS
             { community: ["cors-allow-credentials", "cors-allow-headers", "cors-allow-methods", "cors-allow-origin", "cors-expose-headers", "cors-max-age", "enable-cors"], official: "Annotation nginx.org/server-snippets or location-snippets (CORS headers)", type: "annotation", category: "CORS", anchor: "cors", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "enable-cors": { key: "nginx.org/server-snippets", transform: "corsSnippet" } } } },
             // Error Handling
             { community: ["custom-http-errors", "default-backend"], official: "VirtualServer CRD errorPages[]", type: "virtualserver", category: "Error Handling", anchor: "error-handling", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateErrorPagesVirtualServer" } },
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateErrorPagesVirtualServer" } },
             // Headers
             { community: ["connection-proxy-header"], official: "Snippets or ConfigMap", type: "configmap", category: "Headers", anchor: "headers", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "connection-proxy-header": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "proxy_set_header Connection \"${value}\";" } } } },
             { community: ["custom-headers"], official: "VirtualServer CRD responseHeaders.add", type: "virtualserver", category: "Headers", anchor: "headers", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateCustomHeadersVS" } },
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateCustomHeadersVS" } },
             { community: ["proxy-hide-headers"], official: "Annotation nginx.org/proxy-hide-headers", type: "annotation", category: "Headers", anchor: "headers", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "proxy-hide-headers": { key: "nginx.org/proxy-hide-headers", transform: "direct" } } } },
             { community: ["proxy-pass-headers"], official: "Annotation nginx.org/proxy-pass-headers", type: "annotation", category: "Headers", anchor: "headers", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "proxy-pass-headers": { key: "nginx.org/proxy-pass-headers", transform: "direct" } } } },
             { community: ["upstream-vhost", "x-forwarded-prefix"], official: "VirtualServer CRD requestHeaders.set", type: "virtualserver", category: "Headers", anchor: "headers", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateRequestHeadersVS" } },
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateRequestHeadersVS" } },
             // Load Balancing
             { community: ["load-balance"], official: "Annotation nginx.org/lb-method", type: "annotation", category: "Load Balancing", anchor: "load-balancing", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "load-balance": { key: "nginx.org/lb-method", transform: "direct" } } } },
             { community: ["service-upstream"], official: "Annotation nginx.org/use-cluster-ip", type: "annotation", category: "Load Balancing", anchor: "load-balancing", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "service-upstream": { key: "nginx.org/use-cluster-ip", transform: "direct" } } } },
             { community: ["upstream-hash-by", "upstream-hash-by-subset", "upstream-hash-by-subset-size"], official: "VirtualServer CRD upstreams[].lb-method", type: "virtualserver", category: "Load Balancing", anchor: "load-balancing", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateHashLBVirtualServer" } },
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateHashLBVirtualServer" } },
             // mTLS (Client)
             { community: ["auth-tls-error-page", "auth-tls-pass-certificate-to-upstream", "auth-tls-secret", "auth-tls-verify-client", "auth-tls-verify-depth"], official: "Policy CRD ingressMTLS", type: "policy", category: "mTLS (Client)", anchor: "mtls-client", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml", templateFn: "generateIngressMTLSPolicy" } },
+              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateIngressMTLSPolicy" } },
+            { community: ["auth-tls-match-cn"], official: "Annotation nginx.org/location-snippets", type: "annotation", category: "mTLS (Client)", anchor: "mtls-client", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { annotations: { "auth-tls-match-cn": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "if ($ssl_client_s_dn !~ \"${value}\") { return 403; }" } } } },
             // mTLS (Backend)
-            { community: ["proxy-ssl-ciphers", "proxy-ssl-protocols", "proxy-ssl-secret", "proxy-ssl-server-name", "proxy-ssl-verify", "proxy-ssl-verify-depth"], official: "Policy CRD egressMTLS", type: "policy", category: "mTLS (Backend)", anchor: "mtls-backend", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml", templateFn: "generateEgressMTLSPolicy" } },
+            { community: ["proxy-ssl-ciphers", "proxy-ssl-name", "proxy-ssl-protocols", "proxy-ssl-secret", "proxy-ssl-server-name", "proxy-ssl-verify", "proxy-ssl-verify-depth"], official: "Policy CRD egressMTLS", type: "policy", category: "mTLS (Backend)", anchor: "mtls-backend", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateEgressMTLSPolicy" } },
             // Miscellaneous
             { community: ["enable-access-log"], official: "ConfigMap access-log-off", type: "configmap", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { configMap: { "enable-access-log": { key: "access-log-off", transform: "booleanInvert" } } } },
-            { community: ["enable-opentelemetry"], official: "ConfigMap OpenTelemetry settings", type: "configmap", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { configMap: { "enable-opentelemetry": { key: "opentelemetry", transform: "direct" } } } },
-            { community: ["http2-push-preload"], official: "ConfigMap http2-push-preload", type: "configmap", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { configMap: { "http2-push-preload": { key: "http2-push-preload", transform: "direct" } } } },
-            { community: ["mirror-target"], official: "Annotation nginx.org/location-snippets with mirror directive", type: "annotation", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
+            { community: ["enable-rewrite-log"], official: "Annotation nginx.org/location-snippets (rewrite_log directive)", type: "annotation", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { annotations: { "enable-rewrite-log": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "rewrite_log ${value};" } } } },
+            { community: ["enable-opentelemetry"], official: "ConfigMap otel-* keys (otel-exporter-endpoint, otel-trace-in-http)", type: "configmap", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { configMap: { "enable-opentelemetry": { key: "otel-trace-in-http", transform: "direct" } } } },
+            { community: ["http2-push-preload"], official: "Not supported (HTTP/2 Server Push was removed from NGINX 1.25.1)", type: "unsupported", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: {} },
+            { community: ["mirror-target", "mirror-request-body", "mirror-host"], official: "Annotation nginx.org/location-snippets with mirror directive", type: "annotation", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "mirror-target": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "mirror /mirror;\nmirror_request_body on;" } } } },
-            { community: ["proxy-http-version"], official: "ConfigMap proxy-protocol", type: "configmap", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { configMap: { "proxy-http-version": { key: "proxy-protocol", transform: "direct" } } } },
+            { community: ["proxy-http-version"], official: "Annotation nginx.org/location-snippets", type: "annotation", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { annotations: { "proxy-http-version": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "proxy_http_version ${value};" } } } },
             { community: ["server-alias"], official: "Create additional VirtualServer resources", type: "virtualserver", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateServerAliasVS" } },
-            { community: ["server-tokens"], official: "Annotation nginx.org/server-tokens", type: "annotation", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { annotations: { "server-tokens": { key: "nginx.org/server-tokens", transform: "direct" } } } },
-            { community: ["websocket-services"], official: "Annotation nginx.org/websocket-services", type: "annotation", category: "Miscellaneous", anchor: "miscellaneous", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { annotations: { "websocket-services": { key: "nginx.org/websocket-services", transform: "direct" } } } },
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateServerAliasVS" } },
             // Proxy Settings
             { community: ["proxy-next-upstream", "proxy-next-upstream-timeout", "proxy-next-upstream-tries"], official: "VirtualServer CRD upstreams[].next-upstream*", type: "virtualserver", category: "Proxy Settings", anchor: "proxy-settings", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateProxyNextUpstreamVS" } },
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateProxyNextUpstreamVS" } },
             // Rate Limiting
             { community: ["limit-burst-multiplier", "limit-connections", "limit-rate", "limit-rate-after", "limit-rpm", "limit-rps", "limit-whitelist"], official: "Annotation nginx.org/limit-req-* or Policy CRD rateLimit", type: "policy", category: "Rate Limiting", anchor: "rate-limiting", section: "oss", dualApproach: true, plusRequired: false,
-              officialMapping: { annotations: { "limit-rps": { key: "nginx.org/limit-req-rate", transform: "appendRateUnit" }, "limit-burst-multiplier": { key: "nginx.org/limit-req-burst", transform: "direct" } }, crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml", templateFn: "generateRateLimitPolicy" } },
+              officialMapping: { annotations: { "limit-rps": { key: "nginx.org/limit-req-rate", transform: "appendRateUnit" }, "limit-burst-multiplier": { key: "nginx.org/limit-req-burst", transform: "direct" } }, crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateRateLimitPolicy" } },
             // Redirects
-            { community: ["from-to-www-redirect", "permanent-redirect", "permanent-redirect-code", "temporal-redirect"], official: "VirtualServer CRD action.redirect", type: "virtualserver", category: "Redirects", anchor: "redirects", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateRedirectVirtualServer" } },
+            { community: ["from-to-www-redirect", "permanent-redirect", "permanent-redirect-code", "temporal-redirect", "temporal-redirect-code"], official: "VirtualServer CRD action.redirect", type: "virtualserver", category: "Redirects", anchor: "redirects", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateRedirectVirtualServer" } },
             // Rewrites
             { community: ["app-root", "rewrite-target", "use-regex"], official: "Annotation nginx.org/rewrites or VirtualServer CRD rewritePath", type: "virtualserver", category: "Rewrites", anchor: "rewrites", section: "oss", dualApproach: true, plusRequired: false,
-              officialMapping: { annotations: { "rewrite-target": { key: "nginx.org/rewrites", transform: "direct" } }, crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateRewriteVirtualServer" } },
+              officialMapping: { annotations: { "rewrite-target": { key: "nginx.org/rewrites", transform: "direct" } }, crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateRewriteVirtualServer" } },
             { community: ["proxy-redirect-from", "proxy-redirect-to"], official: "ConfigMap or Annotation nginx.org/server-snippets", type: "configmap", category: "Rewrites", anchor: "rewrites", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "proxy-redirect-from": { key: "nginx.org/server-snippets", transform: "proxyRedirect" } } } },
+            { community: ["proxy-cookie-domain", "proxy-cookie-path"], official: "Annotation nginx.org/location-snippets", type: "annotation", category: "Rewrites", anchor: "rewrites", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { annotations: { "proxy-cookie-domain": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "proxy_cookie_domain ${value};" }, "proxy-cookie-path": { key: "nginx.org/location-snippets", transform: "snippetWrap", template: "proxy_cookie_path ${value};" } } } },
             // SSL/TLS
             { community: ["backend-protocol"], official: "Annotation nginx.org/ssl-services or nginx.org/grpc-services", type: "annotation", category: "SSL/TLS", anchor: "ssl-tls", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { annotations: { "backend-protocol": { key: "nginx.org/ssl-services", transform: "direct" } } } },
+              officialMapping: { annotations: { "backend-protocol": { key: "nginx.org/ssl-services", transform: "backendProtocol" } } } },
             { community: ["force-ssl-redirect"], official: "Annotation nginx.org/redirect-to-https", type: "annotation", category: "SSL/TLS", anchor: "ssl-tls", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "force-ssl-redirect": { key: "nginx.org/redirect-to-https", transform: "direct" } } } },
             { community: ["ssl-ciphers"], official: "Annotation nginx.org/ssl-ciphers", type: "annotation", category: "SSL/TLS", anchor: "ssl-tls", section: "oss", dualApproach: false, plusRequired: false,
@@ -2269,7 +2604,9 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
             { community: ["ssl-redirect"], official: "Annotation nginx.org/redirect-to-https", type: "annotation", category: "SSL/TLS", anchor: "ssl-tls", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "ssl-redirect": { key: "nginx.org/redirect-to-https", transform: "direct" } } } },
             { community: ["ssl-passthrough"], official: "TransportServer CRD TLS_PASSTHROUGH", type: "transportserver", category: "SSL/TLS", anchor: "ssl-tls", section: "oss", dualApproach: false, plusRequired: false,
-              officialMapping: { crdKind: "TransportServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_transportservers.yaml\nkubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_globalconfigurations.yaml", templateFn: "generateSSLPassthroughTransportServer" } },
+              officialMapping: { crdKind: "TransportServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateSSLPassthroughTransportServer" } },
+            { community: ["preserve-trailing-slash"], official: "Annotation nginx.org/location-snippets (default behavior)", type: "annotation", category: "SSL/TLS", anchor: "ssl-tls", section: "oss", dualApproach: false, plusRequired: false,
+              officialMapping: { annotations: { "preserve-trailing-slash": { key: "nginx.org/location-snippets", transform: "direct" } } } },
             // Timeouts
             { community: ["proxy-connect-timeout"], official: "Annotation nginx.org/proxy-connect-timeout", type: "annotation", category: "Timeouts", anchor: "timeouts", section: "oss", dualApproach: false, plusRequired: false,
               officialMapping: { annotations: { "proxy-connect-timeout": { key: "nginx.org/proxy-connect-timeout", transform: "appendTimeUnit" } } } },
@@ -2279,13 +2616,13 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
               officialMapping: { annotations: { "proxy-send-timeout": { key: "nginx.org/proxy-send-timeout", transform: "appendTimeUnit" } } } },
             // Plus: OIDC
             { community: ["auth-cache-duration", "auth-cache-key", "auth-method", "auth-proxy-set-headers", "auth-request-redirect", "auth-response-headers", "auth-signin", "auth-signin-redirect-param", "auth-url"], official: "Policy CRD oidc", type: "policy", category: "OIDC Authentication", anchor: "oidc-authentication", section: "plus", dualApproach: false, plusRequired: true,
-              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml", templateFn: "generateOIDCPolicy" } },
+              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateOIDCPolicy" } },
             // Plus: Session Affinity
             { community: ["affinity", "affinity-mode", "session-cookie-change-on-failure", "session-cookie-conditional-samesite-none", "session-cookie-domain", "session-cookie-expires", "session-cookie-max-age", "session-cookie-name", "session-cookie-path", "session-cookie-samesite", "session-cookie-secure"], official: "VirtualServer CRD sessionCookie", type: "virtualserver", category: "Session Affinity", anchor: "session-affinity", section: "plus", dualApproach: false, plusRequired: true,
-              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_virtualservers.yaml", templateFn: "generateSessionAffinityVS" } },
+              officialMapping: { crdKind: "VirtualServer", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateSessionAffinityVS" } },
             // Plus: WAF
             { community: ["enable-modsecurity", "enable-owasp-core-rules", "modsecurity-snippet", "modsecurity-transaction-id"], official: "Policy CRD waf (NGINX App Protect)", type: "policy", category: "WAF", anchor: "waf", section: "plus", dualApproach: false, plusRequired: true,
-              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4.0/deploy/crds/k8s.nginx.org_policies.yaml", templateFn: "generateWAFPolicy" } }
+              officialMapping: { crdKind: "Policy", crdInstall: "kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v5.3.2/deploy/crds.yaml", templateFn: "generateWAFPolicy" } }
         ];
 
         const ANNOTATION_LOOKUP = new Map();
@@ -2433,6 +2770,7 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                 case 'appendTimeUnit': return /[smhd]$/.test(value) ? value : value + 's';
                 case 'appendBufferSize': return /\s/.test(value) ? value : value + ' 8k';
                 case 'snippetWrap': return template ? template.replace('${value}', value) : value;
+                case 'backendProtocol': return value; // key selection handled in generateMigrationYaml
                 case 'corsSnippet': return value; // handled specially in generateMigrationYaml
                 case 'proxyRedirect': return value; // handled specially in generateMigrationYaml
                 default: return value;
@@ -2615,9 +2953,22 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                         var corsSnippetVal = snippetLines.join('\\n');
                         annotationSwaps.push({ from: 'nginx.ingress.kubernetes.io/enable-cors + cors-*', to: 'nginx.org/server-snippets', value: '|\\n  ' + snippetLines.join('\\n  '), originalValue: 'true (+ cors-* values)', entry: entry });
                     } else {
+                        // Special handling for backend-protocol — selects correct official annotation based on value
+                        var hasBackendProtocol = Object.keys(om.annotations).some(function(k) { return om.annotations[k].transform === 'backendProtocol'; });
+                        if (hasBackendProtocol) {
+                            entry.foundAnnotations.forEach(function(a) {
+                                var spec = om.annotations[a.annotation];
+                                if (spec && spec.transform === 'backendProtocol') {
+                                    var upperVal = (a.value || '').toUpperCase();
+                                    var targetKey = (upperVal === 'GRPC' || upperVal === 'GRPCS') ? 'nginx.org/grpc-services' : 'nginx.org/ssl-services';
+                                    annotationSwaps.push({ from: 'nginx.ingress.kubernetes.io/' + a.annotation, to: targetKey, value: 'my-service', originalValue: a.value, entry: entry });
+                                } else if (spec) {
+                                    var translated = translateValue(a.value, spec.transform, spec.template);
+                                    annotationSwaps.push({ from: 'nginx.ingress.kubernetes.io/' + a.annotation, to: spec.key, value: translated, originalValue: a.value, entry: entry });
+                                }
+                            });
                         // Special handling for proxy-redirect
-                        var hasProxyRedirect = Object.keys(om.annotations).some(function(k) { return om.annotations[k].transform === 'proxyRedirect'; });
-                        if (hasProxyRedirect) {
+                        } else if (Object.keys(om.annotations).some(function(k) { return om.annotations[k].transform === 'proxyRedirect'; })) {
                             var fromVal = getAnnotationValue(entry.foundAnnotations, 'proxy-redirect-from') || 'http://internal/';
                             var toVal = getAnnotationValue(entry.foundAnnotations, 'proxy-redirect-to') || 'https://external/';
                             annotationSwaps.push({ from: 'nginx.ingress.kubernetes.io/proxy-redirect-*', to: 'nginx.org/server-snippets', value: '|\\n  proxy_redirect ' + fromVal + ' ' + toVal + ';', originalValue: fromVal + ' -> ' + toVal, entry: entry });
@@ -2657,11 +3008,44 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
         function copyAnalyzerBlock(btn) {
             var pre = btn.parentElement;
             var text = pre.getAttribute('data-raw') || pre.textContent.replace(/^Copy$|^Copied!$/m, '').trim();
-            navigator.clipboard.writeText(text).then(function() {
-                btn.textContent = 'Copied!';
-                btn.classList.add('copied');
-                setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-            });
+            copyToClipboard(text, btn);
+        }
+
+        // Universal clipboard copy with fallback
+        function copyToClipboard(text, btn) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    if (btn) {
+                        btn.textContent = 'Copied!';
+                        btn.classList.add('copied');
+                        setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+                    }
+                }).catch(function() {
+                    fallbackCopy(text, btn);
+                });
+            } else {
+                fallbackCopy(text, btn);
+            }
+        }
+
+        function fallbackCopy(text, btn) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                if (btn) {
+                    btn.textContent = 'Copied!';
+                    btn.classList.add('copied');
+                }
+            } catch (err) {
+                if (btn) btn.textContent = 'Failed';
+            }
+            document.body.removeChild(textarea);
+            if (btn) setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
         }
 
         function toggleAnalyzerDetails(btn) {
@@ -2677,6 +3061,7 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                 showAnalyzerMessage(resultsDiv, 'error', 'No input.', 'Paste a Kubernetes Ingress YAML manifest to analyze.');
                 return;
             }
+            try {
             var annotations = parseYamlAnnotations(yamlText);
             if (annotations.length === 0) {
                 showAnalyzerMessage(resultsDiv, 'info', 'No community NGINX annotations found.', 'Make sure your YAML contains annotations with the nginx.ingress.kubernetes.io/ prefix.');
@@ -2713,6 +3098,9 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
             setTimeout(function() {
                 resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
+            } catch (err) {
+                showAnalyzerMessage(resultsDiv, 'error', 'Analysis failed.', 'There was an error parsing the YAML. Please check the format and try again.');
+            }
         }
 
         function showAnalyzerMessage(container, type, title, message) {
@@ -2741,6 +3129,8 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                 if (ANNOTATION_TIPS[a.annotation]) {
                     code.className = 'annotation-tooltip';
                     code.setAttribute('data-tip', ANNOTATION_TIPS[a.annotation]);
+                    code.setAttribute('title', ANNOTATION_TIPS[a.annotation]);
+                    code.setAttribute('tabindex', '0');
                 }
                 foundDiv.appendChild(code);
                 if (a.value) {
@@ -2989,6 +3379,15 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
             if (crdCount > 0) addPill('crds', crdCount + ' require CRDs', 'analyzer-step-3');
             if (unrecognized.length > 0) addPill('unrecognized', unrecognized.length + ' unrecognized', 'analyzer-unrecognized');
             container.appendChild(summary);
+
+            // Announce results to screen readers
+            var liveStatus = document.getElementById('analyzerLiveStatus');
+            if (liveStatus) {
+                var msg = totalAnnotations + ' annotation' + (totalAnnotations !== 1 ? 's' : '') + ' found, ' + sorted.length + ' migration path' + (sorted.length !== 1 ? 's' : '');
+                if (crdCount > 0) msg += ', ' + crdCount + ' require CRDs';
+                if (unrecognized.length > 0) msg += ', ' + unrecognized.length + ' unrecognized';
+                liveStatus.textContent = msg;
+            }
 
             var animDelay = 0;
             function applyFadeIn(el) {
@@ -3303,6 +3702,8 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                     if (ANNOTATION_TIPS[u.annotation]) {
                         uCode.className = 'annotation-tooltip';
                         uCode.setAttribute('data-tip', ANNOTATION_TIPS[u.annotation]);
+                        uCode.setAttribute('title', ANNOTATION_TIPS[u.annotation]);
+                        uCode.setAttribute('tabindex', '0');
                     }
                     uFound.appendChild(uCode);
                     if (u.value) {
@@ -3382,7 +3783,7 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                 copyAllBtn.appendChild(clipSvg);
                 copyAllBtn.appendChild(document.createTextNode('Copy All Migration YAML'));
                 copyAllBtn.addEventListener('click', function() {
-                    navigator.clipboard.writeText(allYaml).then(function() {
+                    function onCopied() {
                         copyAllBtn.textContent = '';
                         copyAllBtn.appendChild(clipSvg);
                         copyAllBtn.appendChild(document.createTextNode('Copied!'));
@@ -3393,7 +3794,16 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                             copyAllBtn.appendChild(document.createTextNode('Copy All Migration YAML'));
                             copyAllBtn.classList.remove('copied');
                         }, 2000);
-                    });
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(allYaml).then(onCopied).catch(function() {
+                            fallbackCopy(allYaml);
+                            onCopied();
+                        });
+                    } else {
+                        fallbackCopy(allYaml);
+                        onCopied();
+                    }
                 });
                 exportRow.appendChild(copyAllBtn);
 
@@ -3459,6 +3869,7 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                     if (item.external) {
                         a.href = item.href;
                         a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
                     } else {
                         a.href = item.anchor;
                         a.addEventListener('click', function(e) {
@@ -3518,17 +3929,45 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
             updateNavBadge(0);
         }
 
-        function loadSampleYaml() {
-            document.getElementById('yamlInput').value =
+        // Sample YAML presets
+        var SAMPLE_PRESETS = {
+            simple:
 'apiVersion: networking.k8s.io/v1\n' +
 'kind: Ingress\n' +
 'metadata:\n' +
-'  name: example-ingress\n' +
+'  name: simple-app\n' +
+'  annotations:\n' +
+'    nginx.ingress.kubernetes.io/ssl-redirect: "true"\n' +
+'    nginx.ingress.kubernetes.io/proxy-body-size: "10m"\n' +
+'    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"\n' +
+'    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"\n' +
+'    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"\n' +
+'spec:\n' +
+'  ingressClassName: nginx\n' +
+'  tls:\n' +
+'    - hosts:\n' +
+'        - app.example.com\n' +
+'      secretName: app-tls\n' +
+'  rules:\n' +
+'    - host: app.example.com\n' +
+'      http:\n' +
+'        paths:\n' +
+'          - path: /\n' +
+'            pathType: Prefix\n' +
+'            backend:\n' +
+'              service:\n' +
+'                name: app-service\n' +
+'                port:\n' +
+'                  number: 80',
+            moderate:
+'apiVersion: networking.k8s.io/v1\n' +
+'kind: Ingress\n' +
+'metadata:\n' +
+'  name: production-app\n' +
 '  annotations:\n' +
 '    nginx.ingress.kubernetes.io/rewrite-target: /$2\n' +
 '    nginx.ingress.kubernetes.io/use-regex: "true"\n' +
 '    nginx.ingress.kubernetes.io/ssl-redirect: "true"\n' +
-'    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"\n' +
 '    nginx.ingress.kubernetes.io/proxy-body-size: "50m"\n' +
 '    nginx.ingress.kubernetes.io/proxy-buffer-size: "8k"\n' +
 '    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"\n' +
@@ -3540,12 +3979,8 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
 '    nginx.ingress.kubernetes.io/enable-cors: "true"\n' +
 '    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.example.com"\n' +
 '    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE"\n' +
-'    nginx.ingress.kubernetes.io/configuration-snippet: |\n' +
-'      more_set_headers "X-Custom-Header: value";\n' +
 '    nginx.ingress.kubernetes.io/server-tokens: "false"\n' +
 '    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"\n' +
-'    nginx.ingress.kubernetes.io/enable-access-log: "true"\n' +
-'    nginx.ingress.kubernetes.io/proxy-request-buffering: "on"\n' +
 'spec:\n' +
 '  ingressClassName: nginx\n' +
 '  tls:\n' +
@@ -3562,8 +3997,87 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
 '              service:\n' +
 '                name: api-service\n' +
 '                port:\n' +
-'                  number: 443';
+'                  number: 443',
+            advanced:
+'apiVersion: networking.k8s.io/v1\n' +
+'kind: Ingress\n' +
+'metadata:\n' +
+'  name: enterprise-app\n' +
+'  annotations:\n' +
+'    # SSL and security\n' +
+'    nginx.ingress.kubernetes.io/ssl-redirect: "true"\n' +
+'    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"\n' +
+'    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"\n' +
+'    nginx.ingress.kubernetes.io/auth-tls-secret: "default/ca-secret"\n' +
+'    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"\n' +
+'    # Session affinity (Plus)\n' +
+'    nginx.ingress.kubernetes.io/affinity: "cookie"\n' +
+'    nginx.ingress.kubernetes.io/session-cookie-name: "SERVERID"\n' +
+'    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"\n' +
+'    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"\n' +
+'    nginx.ingress.kubernetes.io/session-cookie-path: "/"\n' +
+'    # WAF/ModSecurity (Plus)\n' +
+'    nginx.ingress.kubernetes.io/enable-modsecurity: "true"\n' +
+'    nginx.ingress.kubernetes.io/modsecurity-snippet: |\n' +
+'      SecRuleEngine On\n' +
+'      SecRule ARGS "@contains <script>" "id:1,deny,status:403"\n' +
+'    # Rate limiting\n' +
+'    nginx.ingress.kubernetes.io/limit-rps: "100"\n' +
+'    nginx.ingress.kubernetes.io/limit-connections: "50"\n' +
+'    # Proxy settings\n' +
+'    nginx.ingress.kubernetes.io/proxy-body-size: "100m"\n' +
+'    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"\n' +
+'    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"\n' +
+'    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"\n' +
+'    # CORS\n' +
+'    nginx.ingress.kubernetes.io/enable-cors: "true"\n' +
+'    nginx.ingress.kubernetes.io/cors-allow-origin: "*"\n' +
+'    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"\n' +
+'    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type, X-Request-ID"\n' +
+'spec:\n' +
+'  ingressClassName: nginx\n' +
+'  tls:\n' +
+'    - hosts:\n' +
+'        - secure.example.com\n' +
+'      secretName: enterprise-tls\n' +
+'  rules:\n' +
+'    - host: secure.example.com\n' +
+'      http:\n' +
+'        paths:\n' +
+'          - path: /\n' +
+'            pathType: Prefix\n' +
+'            backend:\n' +
+'              service:\n' +
+'                name: enterprise-service\n' +
+'                port:\n' +
+'                  number: 443'
+        };
+
+        function toggleSampleDropdown(e) {
+            e.stopPropagation();
+            var dropdown = document.getElementById('sampleDropdown');
+            var btn = e.target.closest('.sample-dropdown-btn');
+            var isVisible = dropdown.classList.toggle('visible');
+            if (btn) btn.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            var dropdown = document.getElementById('sampleDropdown');
+            var btn = document.querySelector('.sample-dropdown-btn');
+            if (dropdown && !e.target.closest('.sample-dropdown')) {
+                dropdown.classList.remove('visible');
+                if (btn) btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        function loadSampleYaml(preset) {
+            var yaml = SAMPLE_PRESETS[preset] || SAMPLE_PRESETS.moderate;
+            document.getElementById('yamlInput').value = yaml;
             document.getElementById('analyzerResults').textContent = '';
+            document.getElementById('sampleDropdown').classList.remove('visible');
+            var btn = document.querySelector('.sample-dropdown-btn');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
             updateInputStatus();
         }
 
@@ -3674,7 +4188,11 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
                 analyzeYaml();
                 return;
             }
-            // Tab inserts 2 spaces
+            // Tab inserts 2 spaces (Escape releases focus)
+            if (e.key === 'Escape') {
+                this.blur();
+                return;
+            }
             if (e.key === 'Tab') {
                 e.preventDefault();
                 var start = this.selectionStart;
@@ -3746,6 +4264,36 @@ kubectl apply -f https://raw.githubusercontent.com/nginx/kubernetes-ingress/v3.4
             document.body.classList.add('dark-mode');
             updateDarkToggle(true);
         }
+
+        // Scroll-to-top button (created dynamically to ensure it exists)
+        (function() {
+            var btn = document.createElement('button');
+            btn.className = 'scroll-to-top';
+            btn.id = 'scrollTopBtn';
+            btn.setAttribute('aria-label', 'Scroll to top');
+            var svgNS = 'http://www.w3.org/2000/svg';
+            var svg = document.createElementNS(svgNS, 'svg');
+            svg.setAttribute('width', '20'); svg.setAttribute('height', '20');
+            svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+            svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2.5');
+            svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+            var polyline = document.createElementNS(svgNS, 'polyline');
+            polyline.setAttribute('points', '18 15 12 9 6 15');
+            svg.appendChild(polyline);
+            btn.appendChild(svg);
+            document.body.appendChild(btn);
+
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 400) {
+                    btn.classList.add('visible');
+                } else {
+                    btn.classList.remove('visible');
+                }
+            });
+            btn.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        })();
     </script>
 </body>
 </html>
