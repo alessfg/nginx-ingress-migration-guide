@@ -10,9 +10,9 @@ Documentation-only project: migration guide from the Kubernetes community NGINX 
 
 ## Key Files
 
-- `index.html` — **The live guide** served via GitHub Pages. Self-contained HTML (inline CSS/JS, no dependencies). Currently v10.
+- `index.html` — **The live guide** served via GitHub Pages. Self-contained HTML (inline CSS/JS, no dependencies). Currently v11.
 - `nginx-ingress-migration-guide.md` — Original Markdown reference (~2,170 lines) with annotation tables and CRD examples.
-- `nginx-ingress-migration-guide-v*.html` — Version history (v1-v10). Read these to understand feature evolution.
+- `nginx-ingress-migration-guide-v*.html` — Version history (v1-v11). Read these to understand feature evolution.
 
 ## Hosting
 
@@ -53,14 +53,3 @@ When verifying annotation mappings, use GitHub MCP tools to fetch from these aut
 **Official migration guide**: https://docs.nginx.com/nginx-ingress-controller/install/migrate-ingress-nginx
 
 Prefer GitHub MCP tools over WebFetch for documentation sites.
-
-## Design Decisions
-
-See `.claude/DESIGN_DECISIONS.md` for the full list of design decisions made during development. Key principles:
-
-- CRD examples are inline expandable rows, not a separate section
-- Mappings split into OSS and Plus sections
-- All categories and annotations sorted alphabetically
-- Every row is expandable with before/after examples
-- YAML Analyzer uses safe DOM methods (no innerHTML)
-- CRD install commands use version v5.3.2
