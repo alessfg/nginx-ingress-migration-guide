@@ -10,9 +10,15 @@ Documentation-only project: migration guide from the Kubernetes community NGINX 
 
 ## Key Files
 
-- `index.html` — **The live guide** served via GitHub Pages. Self-contained HTML (inline CSS/JS, no dependencies). Currently v11.
+- `index.html` — **The live guide** served via GitHub Pages. Self-contained HTML (inline CSS/JS, no dependencies). Currently v12.
 - `nginx-ingress-migration-guide.md` — Original Markdown reference (~2,170 lines) with annotation tables and CRD examples.
-- `nginx-ingress-migration-guide-v*.html` — Version history (v1-v11). Read these to understand feature evolution.
+- `nginx-ingress-migration-guide-v*.html` — Version history (v1-v12). Read these to understand feature evolution.
+
+## Workflow
+
+- **Never edit `index.html` directly** for new work. Instead, create/edit the versioned file for the current iteration (e.g., `nginx-ingress-migration-guide-v13.html`).
+- `index.html` is only updated when a version is finalized and promoted to live.
+- Each new version starts as a copy of the previous version's file (e.g., v13 starts from a copy of v12).
 
 ## Hosting
 
